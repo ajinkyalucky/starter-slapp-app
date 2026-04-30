@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Basic Slack app using the Slapp library and Slack Events API",
   "scripts": {
+    "start": "node serve.js",
     "watch": "nodemon server.js",
     "test": "standard"
   },
