@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>Frosted Glass Reveal</title>
+<style>
+  :root {
+    --bg: #f4f4f2;
+    --ink: #1a1a1a;
+    --muted: #8a8a86;
+    --accent: #1a1a1a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    -webkit-user-select: none;
+    user-select: none;
+    overflow: hidden;
+  }
+
+  .app {
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  header {
+    padding: 18px 22px 6px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  header h1 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  header .hint {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  .stage {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+
+  /* The frame is the area that holds both images. Both layers fill it. */
+  .frame {
+    position: relative;
+    width: min(78vmin, 560px);
+    aspect-ratio: 2 / 3;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow:
+      0 1px 2px rgba(0,0,0,0.04),
+      0 24px 60px -20px rgba(0,0,0,0.18);
+    overflow: hidden;
+    touch-action: none;
+    cursor: grab;
+  }
+  .frame.dragging { cursor: grabbing; }
+
+  .frame img.clear,
+  .frame canvas.frost {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+  }
+
+  /* Tiny brush cursor that follows the pointer */
+  .cursor {
+    position: absolute;
+    pointer-events: none;
+    border-radius: 50%;
+    border: 1.5px solid rgba(0,0,0,0.55);
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(0.5px);
+    transform: translate(-50%, -50%);
+    transition: opacity 120ms ease;
+    opacity: 0;
+    mix-blend-mode: difference;
+  }
+  .frame:hover .cursor,
+  .frame.dragging .cursor { opacity: 1; }
+
+  /* Controls */
+  footer {
+    padding: 14px 22px 22px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 140px;
+    background: transparent;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 2px;
+    background: #d8d8d4;
+    border-radius: 2px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    margin-top: -6px;
+    background: var(--ink);
+    border-radius: 50%;
+    border: 0;
+  }
+  input[type="range"]::-moz-range-track { height: 2px; background: #d8d8d4; border-radius: 2px; }
+  input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; background: var(--ink); border: 0; border-radius: 50%; }
+
+  button, label.file {
+    appearance: none;
+    border: 1px solid #1a1a1a;
+    background: transparent;
+    color: var(--ink);
+    padding: 8px 14px;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 999px;
+    transition: background 140ms ease, color 140ms ease;
+  }
+  button:hover, label.file:hover {
+    background: var(--ink);
+    color: #fff;
+  }
+  label.file input { display: none; }
+
+  .progress {
+    flex: 1 1 200px;
+    min-width: 160px;
+    height: 2px;
+    background: #e6e6e2;
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+  }
+  .progress > span {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 0%;
+    background: var(--ink);
+    transition: width 140ms ease;
+  }
+
+  /* Subtle "tap to reveal" prompt that fades on first interaction */
+  .prompt {
+    position: absolute;
+    inset: auto 0 18px 0;
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(0,0,0,0.55);
+    pointer-events: none;
+    transition: opacity 400ms ease;
+  }
+  .prompt.hidden { opacity: 0; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Santal 33 — Reveal</h1>
+      <span class="hint">drag across the bottle to unlock</span>
+    </header>
+
+    <div class="stage">
+      <div class="frame" id="frame">
+        <img class="clear" id="clearImg" alt="" draggable="false" />
+        <canvas class="frost" id="frost"></canvas>
+        <div class="cursor" id="cursor"></div>
+        <div class="prompt" id="prompt">drag to reveal</div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="group">
+        <span>Brush</span>
+        <input id="size" type="range" min="40" max="220" value="110" />
+      </div>
+      <div class="progress" aria-label="reveal progress"><span id="bar"></span></div>
+      <button id="reset" type="button">Reset</button>
+      <label class="file">
+        Clear image
+        <input type="file" id="fileClear" accept="image/*" />
+      </label>
+      <label class="file">
+        Frosted image
+        <input type="file" id="fileFrost" accept="image/*" />
+      </label>
+    </footer>
+  </div>
+
+<script>
+(() => {
+  const frame    = document.getElementById('frame');
+  const clearImg = document.getElementById('clearImg');
+  const canvas   = document.getElementById('frost');
+  const ctx      = canvas.getContext('2d');
+  const cursor   = document.getElementById('cursor');
+  const sizeIn   = document.getElementById('size');
+  const resetBtn = document.getElementById('reset');
+  const bar      = document.getElementById('bar');
+  const prompt   = document.getElementById('prompt');
+
+  // Default images. Replace these with your assets in /public.
+  const DEFAULT_CLEAR  = 'clear.jpg';
+  const DEFAULT_FROST  = 'frosted.jpg';
+
+  // State
+  let frostImg = new Image();
+  frostImg.crossOrigin = 'anonymous';
+  let frostReady = false;
+  let brush = parseInt(sizeIn.value, 10);
+  let lastX = null, lastY = null;
+  let drawing = false;
+  let revealed = 0;
+
+  // Initialise images. If the local files aren't present, the onerror handler
+  // falls back to a transparent pixel so the prototype still loads — drop in
+  // your own images via the file pickers in the footer.
+  clearImg.onerror = () => { clearImg.src = transparentPixel(); };
+  clearImg.src = DEFAULT_CLEAR;
+
+  frostImg.onload = () => { frostReady = true; paintFrost(); };
+  frostImg.onerror = () => { /* user will load via picker */ };
+  frostImg.src = DEFAULT_FROST;
+
+  function transparentPixel() {
+    return 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
+  }
+
+  function sizeCanvas() {
+    const r = frame.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width  = Math.round(r.width  * dpr);
+    canvas.height = Math.round(r.height * dpr);
+    canvas.style.width  = r.width + 'px';
+    canvas.style.height = r.height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    paintFrost();
+  }
+
+  // (Re)paint the frosted layer to fill the frame using object-fit: cover semantics.
+  function paintFrost() {
+    const r = frame.getBoundingClientRect();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, r.width, r.height);
+    if (!frostReady) return;
+
+    const iw = frostImg.naturalWidth, ih = frostImg.naturalHeight;
+    const scale = Math.max(r.width / iw, r.height / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (r.width  - dw) / 2;
+    const dy = (r.height - dh) / 2;
+    ctx.drawImage(frostImg, dx, dy, dw, dh);
+    revealed = 0;
+    bar.style.width = '0%';
+  }
+
+  // Erase a stamp on the frosted canvas, revealing the clear image below.
+  function stamp(x, y) {
+    ctx.globalCompositeOperation = 'destination-out';
+    const radius = brush / 2;
+    // Use a soft radial gradient so the edge is feathered.
+    const g = ctx.createRadialGradient(x, y, radius * 0.1, x, y, radius);
+    g.addColorStop(0,   'rgba(0,0,0,1)');
+    g.addColorStop(0.6, 'rgba(0,0,0,0.85)');
+    g.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Draw a feathered stroke between the previous and current points so fast
+  // drags don't leave gaps.
+  function strokeTo(x, y) {
+    if (lastX == null) { stamp(x, y); lastX = x; lastY = y; return; }
+    const dx = x - lastX, dy = y - lastY;
+    const dist = Math.hypot(dx, dy);
+    const step = Math.max(2, brush / 6);
+    const n = Math.max(1, Math.ceil(dist / step));
+    for (let i = 1; i <= n; i++) {
+      stamp(lastX + (dx * i) / n, lastY + (dy * i) / n);
+    }
+    lastX = x; lastY = y;
+  }
+
+  function pointer(e) {
+    const r = frame.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  function onDown(e) {
+    frame.setPointerCapture(e.pointerId);
+    drawing = true;
+    frame.classList.add('dragging');
+    prompt.classList.add('hidden');
+    const p = pointer(e);
+    lastX = lastY = null;
+    strokeTo(p.x, p.y);
+    moveCursor(p.x, p.y);
+    scheduleProgress();
+  }
+  function onMove(e) {
+    const p = pointer(e);
+    moveCursor(p.x, p.y);
+    if (!drawing) return;
+    strokeTo(p.x, p.y);
+    scheduleProgress();
+  }
+  function onUp(e) {
+    drawing = false;
+    frame.classList.remove('dragging');
+    lastX = lastY = null;
+  }
+
+  function moveCursor(x, y) {
+    cursor.style.width = brush + 'px';
+    cursor.style.height = brush + 'px';
+    cursor.style.left = x + 'px';
+    cursor.style.top  = y + 'px';
+  }
+
+  // Sample the frost canvas alpha to estimate how much has been revealed.
+  let progressTimer = null;
+  function scheduleProgress() {
+    if (progressTimer) return;
+    progressTimer = requestAnimationFrame(() => {
+      progressTimer = null;
+      const w = canvas.width, h = canvas.height;
+      const sample = 64;
+      const sx = Math.max(1, Math.floor(w / sample));
+      const sy = Math.max(1, Math.floor(h / sample));
+      let cleared = 0, total = 0;
+      try {
+        const data = ctx.getImageData(0, 0, w, h).data;
+        for (let y = 0; y < h; y += sy) {
+          for (let x = 0; x < w; x += sx) {
+            const i = (y * w + x) * 4 + 3;
+            total++;
+            if (data[i] < 16) cleared++;
+          }
+        }
+      } catch { return; }
+      revealed = total ? cleared / total : 0;
+      bar.style.width = (revealed * 100).toFixed(1) + '%';
+    });
+  }
+
+  // Wire it up
+  frame.addEventListener('pointerdown', onDown);
+  frame.addEventListener('pointermove', onMove);
+  frame.addEventListener('pointerup',   onUp);
+  frame.addEventListener('pointercancel', onUp);
+  frame.addEventListener('pointerleave', () => { cursor.style.opacity = ''; });
+
+  sizeIn.addEventListener('input', () => {
+    brush = parseInt(sizeIn.value, 10);
+    if (lastX != null) moveCursor(lastX, lastY);
+  });
+
+  resetBtn.addEventListener('click', () => {
+    paintFrost();
+    prompt.classList.remove('hidden');
+  });
+
+  document.getElementById('fileClear').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    clearImg.src = url;
+  });
+  document.getElementById('fileFrost').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    frostImg = new Image();
+    frostImg.onload = () => { frostReady = true; paintFrost(); };
+    frostImg.src = url;
+  });
+
+  window.addEventListener('resize', sizeCanvas);
+  // Initial sizing — wait a tick so layout settles
+  requestAnimationFrame(sizeCanvas);
+})();
+</script>
+</body>
+</html>
