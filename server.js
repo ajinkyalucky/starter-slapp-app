@@ -1,5 +1,6 @@
 'use strict'
 
+const path = require('path')
 const express = require('express')
 const Slapp = require('slapp')
 const ConvoStore = require('slapp-convo-beepboop')
@@ -114,7 +115,9 @@ slapp.message('.*', ['direct_mention', 'direct_message'], (msg) => {
 })
 
 // attach Slapp to express server
-var server = slapp.attachToExpress(express())
+var app = express()
+app.use(express.static(path.join(__dirname, 'public')))
+var server = slapp.attachToExpress(app)
 
 // start http server
 server.listen(port, (err) => {
