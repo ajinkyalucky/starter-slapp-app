@@ -1,34 +1,46 @@
-# starter-slapp-app
+# AI Stylist — Web App
 
-This repository is meant as an example and starting point for building a Slack app on [Beep Boop][bb].  It's written in [node.js](), uses the [Slapp][slapp] library, and takes advantage of the [Slack Events API][slack-events-api].
+A virtual try-on and AI-curated styling experience. Compare your "current you"
+against a "styled you" silhouette, swap looks for Work / Date / Casual / Travel,
+and reserve the full look at your nearest store.
 
-## Setup Instructions
+## Features
 
-Once you've created a new [Beep Boop](bb) project with this repo, go to your project's **Settings** tab and enable a Slack App.
+- **Fit Score** with breakdown of shoulder, chest, waist, leg, and posture
+- **Side-by-side silhouettes** — Current You vs Styled You with annotations
+- **AI Stylist categories** — Work, Date, Casual, Travel (live API-driven)
+- **Per-side controls** — lighting and background scene toggles
+- **Bottom action bar** — view in motion, lighting, background, reserve look
+- **Reserve flow** — 30-minute hold with live countdown timer
+- **Store locator** with mini-map and full-map modal
+- **Promise tiles** — alterations, returns, save, help
 
-![Enable Slack App](https://cloud.githubusercontent.com/assets/367275/19362140/b4039c86-9142-11e6-9b31-941609c1b090.gif)
+## Run locally
 
-Follow the steps laid out in the wizard. You'll want to enable **Event Subscriptions** on your Slack App using the `URL` provided and add subscriptions for the following **Bot Events**:
+```bash
+npm install
+npm start
+# open http://localhost:3000
+```
 
-+ `message.channels`
-+ `message.im`
+For development with auto-reload:
 
-### 🔥 it up
+```bash
+npm run watch
+```
 
-Once you've finished setting up your Slack App and saved the `Client ID`, `Client Secret` and `Verification Token` on Beep Boop, go ahead and **Start** your project.
+## API
 
-![Start](https://cloud.githubusercontent.com/assets/367275/19364564/edb43efa-914b-11e6-9265-d33122bf5f9a.png)
+| Method | Path                     | Description                           |
+|--------|--------------------------|---------------------------------------|
+| GET    | `/api/look/:category`    | Returns the curated look + items      |
+| POST   | `/api/reserve`           | Holds the look for 30 minutes         |
+| GET    | `/healthz`               | Health check                          |
 
-Once your project has started, go to the **Teams** tab and add your new Slack App to one of your Slack teams.
+Categories: `work`, `date`, `casual`, `travel`.
 
-![Add Team](https://cloud.githubusercontent.com/assets/367275/19364343/012e4922-914b-11e6-8f0a-bb020b016fd2.png)
+## Tech
 
-Send `@slappbot` a Direct Message of `help` to see what it can do.
-
-![Help](https://cloud.githubusercontent.com/assets/367275/19364707/7a4f8964-914c-11e6-99cd-d4cd65c9061a.png)
-
-[bb]: https://beepboophq.com
-[slapp]: https://github.com/BeepBoopHQ/slapp
-[slack-events-api]: https://api.slack.com/events-api
-[presence-polyfill]: https://github.com/BeepBoopHQ/beepboop-slapp-presence-polyfill
-
+- Node.js + Express (server)
+- Vanilla HTML / CSS / JS (frontend) — no build step
+- SVG-only graphics — no external image assets

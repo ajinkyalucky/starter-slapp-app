@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Stylist · Curated for you</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="stage">
+    <div class="grid">
+
+      <!-- ============== LEFT: FIT & BODY INSIGHTS ============== -->
+      <section class="card panel-left">
+        <header class="fit-block">
+          <span class="eyebrow">FIT SCORE</span>
+          <div class="fit-score">
+            <span id="fitScoreNum" class="fit-num">94</span><span class="fit-pct">%</span>
+          </div>
+          <p id="fitScoreLabel" class="fit-label">Great fit</p>
+
+          <button class="ghost-pill" id="whatIsThisBtn" aria-haspopup="dialog">
+            What's this? <span class="info-i">i</span>
+          </button>
+        </header>
+
+        <div class="divider"></div>
+
+        <div class="insights">
+          <span class="eyebrow muted">BODY INSIGHTS</span>
+          <ul class="insight-list" id="insightList">
+            <li data-insight="shoulder">
+              <span class="bullet"><svg viewBox="0 0 24 24"><path d="M4 14c2-3 5-5 8-5s6 2 8 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+              <div><b>Shoulder Fit</b><small>Good alignment</small></div>
+            </li>
+            <li data-insight="chest">
+              <span class="bullet"><svg viewBox="0 0 24 24"><path d="M5 8l3-2h8l3 2-2 4H7L5 8z M9 12v6h6v-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+              <div><b>Chest Fit</b><small>Could be sharper</small></div>
+            </li>
+            <li data-insight="waist">
+              <span class="bullet"><svg viewBox="0 0 24 24"><path d="M7 6h10l-2 5 2 5H7l2-5-2-5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+              <div><b>Waist Fit</b><small>Ok</small></div>
+            </li>
+            <li data-insight="legs">
+              <span class="bullet"><svg viewBox="0 0 24 24"><path d="M9 4v8l-2 8 M15 4v8l2 8 M9 4h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+              <div><b>Leg Length</b><small>Balanced</small></div>
+            </li>
+            <li data-insight="posture">
+              <span class="bullet"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2" fill="currentColor"/><path d="M9 9h6l-2 6 2 6h-2l-1-5-1 5H9l2-6-2-6z" fill="currentColor"/></svg></span>
+              <div><b>Posture</b><small>Good</small></div>
+            </li>
+          </ul>
+        </div>
+
+        <button id="viewAnalysisBtn" class="cta ghost">
+          View Analysis
+          <svg viewBox="0 0 24 24" width="14" height="14"><path d="M4 18l4-6 4 4 6-10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 20h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </section>
+
+      <!-- ============== CENTER: TRY-ON STAGE ============== -->
+      <section class="card panel-center">
+        <div class="silhouettes">
+          <div class="silhouette" data-side="current">
+            <h2 class="title-eyebrow">CURRENT YOU</h2>
+            <span class="title-rule"></span>
+            <div class="mini-toolbar">
+              <button class="tool-btn" data-action="lighting" data-target="current" title="Adjust lighting">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 3v2"/><path d="M12 19v2"/><path d="M3 12h2"/><path d="M19 12h2"/><path d="M5.6 5.6l1.4 1.4"/><path d="M17 17l1.4 1.4"/><path d="M5.6 18.4L7 17"/><path d="M17 7l1.4-1.4"/></g></svg>
+              </button>
+              <button class="tool-btn" data-action="background" data-target="current" title="Change background">
+                <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="10" r="1.5" fill="currentColor"/><path d="M5 17l4-4 4 4 3-3 3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+            <div class="figure-wrap">
+              <svg class="figure" viewBox="0 0 200 380" aria-hidden="true">
+                <defs>
+                  <linearGradient id="bodyDimCurrent" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0" stop-color="#3a3a3a" stop-opacity="0.85"/>
+                    <stop offset="1" stop-color="#1a1a1a" stop-opacity="0.85"/>
+                  </linearGradient>
+                </defs>
+                <path class="body-outline" d="M100 18c12 0 22 9 22 22s-9 22-22 22c-12 0-22-9-22-22s10-22 22-22z
+                  M70 70c5-4 18-6 30-6s25 2 30 6c8 6 12 18 14 32l4 28-12 4-2-22c-1 14-1 36 1 60l2 60c2 36 4 70 4 90l-22 2-4-86-4 4-4-4-4 86-22-2c0-20 2-54 4-90l2-60c2-24 2-46 1-60l-2 22-12-4 4-28c2-14 6-26 14-32z"
+                      fill="url(#bodyDimCurrent)" stroke="rgba(212,175,55,0.18)" stroke-dasharray="2 4" stroke-width="1"/>
+              </svg>
+              <span class="podium"></span>
+            </div>
+          </div>
+
+          <button id="swapBtn" class="swap-btn" title="Swap views" aria-label="Swap views">
+            <svg viewBox="0 0 24 24"><path d="M3 9h14l-3-3 M21 15H7l3 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+
+          <div class="silhouette" data-side="styled">
+            <h2 class="title-eyebrow">STYLED YOU</h2>
+            <span class="title-rule"></span>
+            <div class="mini-toolbar">
+              <button class="tool-btn" data-action="lighting" data-target="styled" title="Adjust lighting">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 3v2"/><path d="M12 19v2"/><path d="M3 12h2"/><path d="M19 12h2"/><path d="M5.6 5.6l1.4 1.4"/><path d="M17 17l1.4 1.4"/><path d="M5.6 18.4L7 17"/><path d="M17 7l1.4-1.4"/></g></svg>
+              </button>
+              <button class="tool-btn" data-action="background" data-target="styled" title="Change background">
+                <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="10" r="1.5" fill="currentColor"/><path d="M5 17l4-4 4 4 3-3 3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+            <div class="figure-wrap glow">
+              <svg class="figure" viewBox="0 0 200 380" aria-hidden="true">
+                <defs>
+                  <linearGradient id="bodyStyled" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0" stop-color="#2c2417"/>
+                    <stop offset="1" stop-color="#0d0a05"/>
+                  </linearGradient>
+                </defs>
+                <!-- styled silhouette: broader shoulders / tapered waist -->
+                <path class="body-outline styled" d="M100 18c13 0 23 10 23 23s-10 23-23 23c-13 0-23-10-23-23s10-23 23-23z
+                  M64 72c8-6 22-8 36-8s28 2 36 8c10 8 14 24 16 38l4 26-13 4-3-22c-1 14-2 36 0 60l2 50c2 36 4 70 4 92l-23 2-4-86-3 4-3-4-4 86-23-2c0-22 2-56 4-92l2-50c2-24 1-46 0-60l-3 22-13-4 4-26c2-14 6-30 16-38z"
+                      fill="url(#bodyStyled)" stroke="rgba(212,175,55,0.55)" stroke-dasharray="2 3" stroke-width="1"/>
+              </svg>
+              <span class="podium glowy"></span>
+
+              <!-- annotation labels -->
+              <div class="annot a-shoulder">
+                <span class="dot"></span>
+                <div class="annot-text"><b>Broader</b><span>shoulder presence</span></div>
+              </div>
+              <div class="annot a-waist">
+                <span class="dot"></span>
+                <div class="annot-text"><b>Tapered</b><span>waist look</span></div>
+              </div>
+              <div class="annot a-pant">
+                <span class="dot"></span>
+                <div class="annot-text"><b>Perfect</b><span>pant break</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI voice tip -->
+        <div class="ai-tip" id="aiTip">
+          <span class="wave">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </span>
+          <div class="ai-tip-body">
+            <p id="aiTipText">Try a darker tone—it sharpens your profile and complements your skin.</p>
+            <small>AI Stylist</small>
+          </div>
+        </div>
+
+        <!-- Bottom action toolbar -->
+        <div class="action-bar">
+          <button class="action" id="actionMotion">
+            <span class="action-icn">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="4" r="2" fill="currentColor"/><path d="M9 8l3 4 3-4 M12 12v6 M9 22l3-4 3 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span>View in<br>motion</span>
+          </button>
+          <button class="action" id="actionLighting">
+            <span class="action-icn">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.7"/><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 3v2"/><path d="M12 19v2"/><path d="M3 12h2"/><path d="M19 12h2"/><path d="M5.6 5.6l1.4 1.4"/><path d="M17 17l1.4 1.4"/><path d="M5.6 18.4L7 17"/><path d="M17 7l1.4-1.4"/></g></svg>
+            </span>
+            <span>Try different<br>lighting</span>
+          </button>
+          <button class="action" id="actionBackground">
+            <span class="action-icn">
+              <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="10" r="1.6" fill="currentColor"/><path d="M5 17l4-4 4 4 3-3 3 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            </span>
+            <span>Change<br>background</span>
+          </button>
+          <button class="action primary" id="actionReserve">
+            <span class="action-icn">
+              <svg viewBox="0 0 24 24"><rect x="5.5" y="11" width="13" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 11V8a4 4 0 018 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            </span>
+            <span><b>Reserve look</b><br><small id="reserveTimer">(30 min)</small></span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ============== RIGHT: AI STYLIST PANEL ============== -->
+      <aside class="card panel-right">
+        <header class="stylist-header">
+          <span class="ai-mark">
+            <svg viewBox="0 0 24 24"><path d="M12 2l1.6 4.4L18 8l-4.4 1.6L12 14l-1.6-4.4L6 8l4.4-1.6L12 2z" fill="currentColor"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z" fill="currentColor" opacity=".7"/></svg>
+            AI STYLIST
+          </span>
+          <button class="live-dot" id="liveBtn" title="Talk to stylist">
+            <svg viewBox="0 0 24 24"><path d="M5 12a7 7 0 0114 0 M3 12a9 9 0 0118 0 M9 12a3 3 0 016 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </button>
+        </header>
+
+        <p id="stylistTagline" class="stylist-tagline">
+          Here's a look curated for you,<br>based on your style, fit & trends.
+        </p>
+
+        <div class="chips" id="categoryChips">
+          <button class="chip" data-cat="work">Work</button>
+          <button class="chip active" data-cat="date">Date</button>
+          <button class="chip" data-cat="casual">Casual</button>
+          <button class="chip" data-cat="travel">Travel</button>
+        </div>
+
+        <div class="section-row">
+          <span class="eyebrow">COMPLETE LOOK</span>
+          <button class="link-btn" id="breakdownBtn">View Breakdown</button>
+        </div>
+
+        <ul class="look-list" id="lookList"></ul>
+
+        <span class="eyebrow tight">WHY THIS LOOK WORKS FOR YOU</span>
+        <div class="badges" id="lookBadges"></div>
+
+        <div class="section-row">
+          <span class="eyebrow">STORE AVAILABILITY</span>
+          <button class="link-btn" id="viewMapBtn">View Map</button>
+        </div>
+
+        <div class="store-row">
+          <div class="store-info">
+            <span class="pin">
+              <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 017 7c0 5-7 13-7 13S5 14 5 9a7 7 0 017-7z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="9" r="2.4" fill="currentColor"/></svg>
+            </span>
+            <div>
+              <b>Phoenix Palladium Mall</b>
+              <small>Lower Ground Floor</small>
+              <small class="walk">2 mins walk</small>
+            </div>
+          </div>
+          <div class="map-mini" id="mapMini">
+            <svg viewBox="0 0 110 80" preserveAspectRatio="none">
+              <rect width="110" height="80" fill="#0e0e0e"/>
+              <g stroke="#262421" stroke-width="1" fill="none">
+                <path d="M0 20h110 M0 50h110 M30 0v80 M75 0v80"/>
+              </g>
+              <g stroke="#3a3429" stroke-width="2" fill="none">
+                <path d="M0 38h110 M52 0v80"/>
+              </g>
+              <circle cx="78" cy="48" r="6" fill="#d4af37"/>
+              <circle cx="78" cy="48" r="11" fill="#d4af37" opacity=".18"/>
+            </svg>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ============== FOOTER PROMISES ============== -->
+    <footer class="promise-bar">
+      <div class="promise" data-promise="alterations">
+        <span class="p-icn">
+          <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 16l8-8 M9 8l-1 1 M16 15l-1 1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </span>
+        <div><b>FREE ALTERATIONS</b><small>Perfect fit. Everytime.</small></div>
+      </div>
+      <div class="promise" data-promise="returns">
+        <span class="p-icn">
+          <svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4 10h16 M9 4v4 M15 4v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </span>
+        <div><b>EASY RETURNS</b><small>Hassle free returns within 30 days.</small></div>
+      </div>
+      <div class="promise" data-promise="save">
+        <span class="p-icn">
+          <svg viewBox="0 0 24 24"><path d="M6 4h12v17l-6-4-6 4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 9l1 2 2 .3-1.4 1.4.3 2L12 13.6 10.1 14.7l.3-2L9 11.3l2-.3z" fill="currentColor"/></svg>
+        </span>
+        <div><b>SAVE YOUR LOOKS</b><small>Access across devices.</small></div>
+      </div>
+      <div class="promise" data-promise="help">
+        <span class="p-icn">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.5 9.5a2.5 2.5 0 015 0c0 1.5-2.5 1.7-2.5 3.5 M12 17v.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </span>
+        <div><b>NEED HELP?</b><small>Chat with our stylist</small></div>
+      </div>
+      <div class="qr" id="qrTile" title="Scan to continue on phone">
+        <div class="qr-grid" aria-hidden="true"></div>
+      </div>
+    </footer>
+  </main>
+
+  <!-- ============== MODAL (generic) ============== -->
+  <div class="modal-root" id="modalRoot" aria-hidden="true">
+    <div class="modal-backdrop" data-close="true"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" data-close="true" aria-label="Close">×</button>
+      <h3 id="modalTitle"></h3>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- ============== TOAST ============== -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="/script.js"></script>
+</body>
+</html>

@@ -1,126 +1,86 @@
 'use strict'
 
 const express = require('express')
-const Slapp = require('slapp')
-const ConvoStore = require('slapp-convo-beepboop')
-const Context = require('slapp-context-beepboop')
+const path = require('path')
 
-// use `PORT` env var on Beep Boop - default to 3000 locally
-var port = process.env.PORT || 3000
+const app = express()
+const port = process.env.PORT || 3000
 
-var slapp = Slapp({
-  // Beep Boop sets the SLACK_VERIFY_TOKEN env var
-  verify_token: process.env.SLACK_VERIFY_TOKEN,
-  convo_store: ConvoStore(),
-  context: Context()
-})
+app.use(express.json())
+app.use(express.static(path.join(__dirname, 'public')))
 
-
-var HELP_TEXT = `
-I will respond to the following messages:
-\`help\` - to see this message.
-\`hi\` - to demonstrate a conversation that tracks state.
-\`thanks\` - to demonstrate a simple response.
-\`<type-any-other-text>\` - to demonstrate a random emoticon response, some of the time :wink:.
-\`attachment\` - to see a Slack attachment message.
-`
-
-//*********************************************
-// Setup different handlers for messages
-//*********************************************
-
-// response to the user typing "help"
-slapp.message('help', ['mention', 'direct_message'], (msg) => {
-  msg.say(HELP_TEXT)
-})
-
-// "Conversation" flow that tracks state - kicks off when user says hi, hello or hey
-slapp
-  .message('^(hi|hello|hey)$', ['direct_mention', 'direct_message'], (msg, text) => {
-    msg
-      .say(`${text}, how are you?`)
-      // sends next event from user to this route, passing along state
-      .route('how-are-you', { greeting: text })
-  })
-  .route('how-are-you', (msg, state) => {
-    var text = (msg.body.event && msg.body.event.text) || ''
-
-    // user may not have typed text as their next action, ask again and re-route
-    if (!text) {
-      return msg
-        .say("Whoops, I'm still waiting to hear how you're doing.")
-        .say('How are you?')
-        .route('how-are-you', state)
-    }
-
-    // add their response to state
-    state.status = text
-
-    msg
-      .say(`Ok then. What's your favorite color?`)
-      .route('color', state)
-  })
-  .route('color', (msg, state) => {
-    var text = (msg.body.event && msg.body.event.text) || ''
-
-    // user may not have typed text as their next action, ask again and re-route
-    if (!text) {
-      return msg
-        .say("I'm eagerly awaiting to hear your favorite color.")
-        .route('color', state)
-    }
-
-    // add their response to state
-    state.color = text
-
-    msg
-      .say('Thanks for sharing.')
-      .say(`Here's what you've told me so far: \`\`\`${JSON.stringify(state)}\`\`\``)
-    // At this point, since we don't route anywhere, the "conversation" is over
-  })
-
-// Can use a regex as well
-slapp.message(/^(thanks|thank you)/i, ['mention', 'direct_message'], (msg) => {
-  // You can provide a list of responses, and a random one will be chosen
-  // You can also include slack emoji in your responses
-  msg.say([
-    "You're welcome :smile:",
-    'You bet',
-    ':+1: Of course',
-    'Anytime :sun_with_face: :full_moon_with_face:'
-  ])
-})
-
-// demonstrate returning an attachment...
-slapp.message('attachment', ['mention', 'direct_message'], (msg) => {
-  msg.say({
-    text: 'Check out this amazing attachment! :confetti_ball: ',
-    attachments: [{
-      text: 'Slapp is a robust open source library that sits on top of the Slack APIs',
-      title: 'Slapp Library - Open Source',
-      image_url: 'https://storage.googleapis.com/beepboophq/_assets/bot-1.22f6fb.png',
-      title_link: 'https://beepboophq.com/',
-      color: '#7CD197'
-    }]
-  })
-})
-
-// Catch-all for any other responses not handled above
-slapp.message('.*', ['direct_mention', 'direct_message'], (msg) => {
-  // respond only 40% of the time
-  if (Math.random() < 0.4) {
-    msg.say([':wave:', ':pray:', ':raised_hands:'])
+// Mock catalog data so the UI can be driven by an API call
+const LOOKS = {
+  work: {
+    tagline: "A sharp boardroom look — refined lines, modern neutrals.",
+    fitScore: 92,
+    items: [
+      { id: 'w1', name: 'Charcoal Wool Suit',     price: 18999, stock: 'In Stock',     left: 2, img: 'blazer' },
+      { id: 'w2', name: 'Crisp White Shirt',      price: 2299,  stock: 'In Stock',     left: 5, img: 'shirt'  },
+      { id: 'w3', name: 'Slim Wool Trousers',     price: 4999,  stock: 'In Stock',     left: 3, img: 'pants'  },
+      { id: 'w4', name: 'Leather Oxford Shoes',   price: 6499,  stock: 'Low Stock',    left: 1, img: 'shoes'  },
+      { id: 'w5', name: 'Slim Tie',               price: 1299,  stock: 'In Stock',     left: 4, img: 'watch'  }
+    ],
+    badges: ['Authoritative', 'Modern Tailoring', 'Boardroom ready', 'Slim silhouette', 'Trending in Mumbai']
+  },
+  date: {
+    tagline: "Here's a look curated for you, based on your style, fit & trends.",
+    fitScore: 94,
+    items: [
+      { id: 'd1', name: 'Linen Blend Blazer',     price: 8499,  stock: 'In Stock', left: 2, img: 'blazer' },
+      { id: 'd2', name: 'Premium Cotton Tee',     price: 1899,  stock: 'In Stock', left: 3, img: 'shirt'  },
+      { id: 'd3', name: 'Tailored Trousers',      price: 3999,  stock: 'In Stock', left: 2, img: 'pants'  },
+      { id: 'd4', name: 'Minimal White Sneakers', price: 4299,  stock: 'In Stock', left: 4, img: 'shoes'  },
+      { id: 'd5', name: 'Chronograph Watch',      price: 12499, stock: 'In Stock', left: 1, img: 'watch'  }
+    ],
+    badges: ['Sharp jawline fit', 'V-shape silhouette', 'Broad shoulder enhancement', 'Perfect for Date / Evening', 'Trending in Bangalore']
+  },
+  casual: {
+    tagline: "Easy weekend energy — light layers, comfortable flow.",
+    fitScore: 89,
+    items: [
+      { id: 'c1', name: 'Oversized Hoodie',       price: 2799,  stock: 'In Stock',  left: 6, img: 'blazer' },
+      { id: 'c2', name: 'Graphic Cotton Tee',     price: 1199,  stock: 'In Stock',  left: 8, img: 'shirt'  },
+      { id: 'c3', name: 'Relaxed Denim',          price: 3299,  stock: 'In Stock',  left: 4, img: 'pants'  },
+      { id: 'c4', name: 'Canvas Sneakers',        price: 2199,  stock: 'In Stock',  left: 5, img: 'shoes'  },
+      { id: 'c5', name: 'Beaded Bracelet Stack',  price: 899,   stock: 'In Stock',  left: 7, img: 'watch'  }
+    ],
+    badges: ['Relaxed fit', 'Movement friendly', 'Soft fabrics', 'Weekend ready', 'Trending in Goa']
+  },
+  travel: {
+    tagline: "Wrinkle-resistant, lightweight, ready for 12-hour days.",
+    fitScore: 91,
+    items: [
+      { id: 't1', name: 'Tech Bomber Jacket',     price: 6999,  stock: 'In Stock', left: 3, img: 'blazer' },
+      { id: 't2', name: 'Merino Travel Tee',      price: 2499,  stock: 'In Stock', left: 4, img: 'shirt'  },
+      { id: 't3', name: 'Stretch Cargo Pants',    price: 3799,  stock: 'In Stock', left: 5, img: 'pants'  },
+      { id: 't4', name: 'Trail Runner Sneakers',  price: 5499,  stock: 'In Stock', left: 2, img: 'shoes'  },
+      { id: 't5', name: 'GMT Field Watch',        price: 9999,  stock: 'Low Stock', left: 1, img: 'watch' }
+    ],
+    badges: ['Wrinkle resistant', 'Breathable', 'Layer ready', 'All-day comfort', 'Trending with travelers']
   }
+}
+
+app.get('/api/look/:category', (req, res) => {
+  const cat = (req.params.category || '').toLowerCase()
+  const look = LOOKS[cat]
+  if (!look) return res.status(404).json({ error: 'category_not_found' })
+  res.json({ category: cat, ...look })
 })
 
-// attach Slapp to express server
-var server = slapp.attachToExpress(express())
+app.post('/api/reserve', (req, res) => {
+  const { items = [] } = req.body || {}
+  const expiresAt = Date.now() + 30 * 60 * 1000
+  res.json({
+    ok: true,
+    reservationId: 'RSV-' + Math.random().toString(36).slice(2, 8).toUpperCase(),
+    items,
+    expiresAt
+  })
+})
 
-// start http server
-server.listen(port, (err) => {
-  if (err) {
-    return console.error(err)
-  }
+app.get('/healthz', (_, res) => res.json({ ok: true }))
 
-  console.log(`Listening on port ${port}`)
+app.listen(port, () => {
+  console.log(`AI Stylist running on http://localhost:${port}`)
 })
