@@ -4,6 +4,15 @@ const express = require('express')
 const Slapp = require('slapp')
 const ConvoStore = require('slapp-convo-beepboop')
 const Context = require('slapp-context-beepboop')
+const figma = require('./figma')
+
+let figmaClient = null
+function getFigma () {
+  if (!figmaClient && process.env.FIGMA_TOKEN) {
+    figmaClient = figma(process.env.FIGMA_TOKEN)
+  }
+  return figmaClient
+}
 
 // use `PORT` env var on Beep Boop - default to 3000 locally
 var port = process.env.PORT || 3000
@@ -23,6 +32,8 @@ I will respond to the following messages:
 \`thanks\` - to demonstrate a simple response.
 \`<type-any-other-text>\` - to demonstrate a random emoticon response, some of the time :wink:.
 \`attachment\` - to see a Slack attachment message.
+\`figma file <file-key>\` - fetch metadata for a Figma file.
+\`figma comments <file-key>\` - list recent comments on a Figma file.
 `
 
 //*********************************************
@@ -103,6 +114,51 @@ slapp.message('attachment', ['mention', 'direct_message'], (msg) => {
       color: '#7CD197'
     }]
   })
+})
+
+// Figma: fetch file metadata
+slapp.message('^figma file (\\S+)$', ['direct_mention', 'direct_message'], (msg, text, fileKey) => {
+  const client = getFigma()
+  if (!client) {
+    return msg.say('Figma is not configured. Set the `FIGMA_TOKEN` env var.')
+  }
+  client.getFile(fileKey)
+    .then((data) => {
+      msg.say({
+        text: `Figma file: *${data.name}*`,
+        attachments: [{
+          title: data.name,
+          title_link: `https://www.figma.com/file/${encodeURIComponent(fileKey)}`,
+          fields: [
+            { title: 'Last modified', value: data.lastModified || 'unknown', short: true },
+            { title: 'Version', value: data.version || 'unknown', short: true }
+          ],
+          color: '#0acf83'
+        }]
+      })
+    })
+    .catch((err) => msg.say(`Couldn't load Figma file: ${err.message}`))
+})
+
+// Figma: list recent comments on a file
+slapp.message('^figma comments (\\S+)$', ['direct_mention', 'direct_message'], (msg, text, fileKey) => {
+  const client = getFigma()
+  if (!client) {
+    return msg.say('Figma is not configured. Set the `FIGMA_TOKEN` env var.')
+  }
+  client.getComments(fileKey)
+    .then((data) => {
+      const comments = data.comments || []
+      if (comments.length === 0) {
+        return msg.say('No comments on this Figma file.')
+      }
+      const lines = comments.slice(0, 10).map((c) => {
+        const user = (c.user && c.user.handle) || 'someone'
+        return `• *${user}*: ${c.message}`
+      })
+      msg.say(`*Recent comments (${comments.length}):*\n${lines.join('\n')}`)
+    })
+    .catch((err) => msg.say(`Couldn't load Figma comments: ${err.message}`))
 })
 
 // Catch-all for any other responses not handled above
