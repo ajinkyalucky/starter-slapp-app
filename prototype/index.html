@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>DRIP — Prototype</title>
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=3" />
 </head>
 <body>
   <div class="stage">
@@ -106,16 +106,23 @@
         <div class="status-bar">9:41</div>
         <button class="back" data-go="name">‹</button>
         <p class="step" data-go="brands">Skip to next ›</p>
-        <h3 class="eyebrow">Get clothes<br/>that fit you better</h3>
-        <div class="tabs tabs--3">
-          <button class="tab is-active" data-go="height">Select height</button>
+        <h3 class="eyebrow center title-measure">Get clothes<br/>that fit you better</h3>
+        <div class="tabs tabs-text">
+          <button class="tab is-active" data-go="height">Select Height</button>
           <span class="tab-sep">›</span>
-          <button class="tab" data-go="weight">Select weight</button>
+          <button class="tab" data-go="weight">Select Weight</button>
           <span class="tab-sep">›</span>
-          <button class="tab" data-go="body">Select body type</button>
+          <button class="tab" data-go="body">Select Body type</button>
         </div>
-        <div class="picker" data-picker="height" data-min="140" data-max="220" data-unit="cm"></div>
-        <div class="picker-hint">Drag · scroll · or use ▲ ▼</div>
+        <div class="picker"
+             data-picker="height"
+             data-min="140" data-max="220"
+             data-alt-min="55" data-alt-max="86"
+             data-units="cm,ft"></div>
+        <div class="unit-toggle" data-toggle="height">
+          <button class="on" data-unit="cm">CM</button>
+          <button data-unit="ft">FEET</button>
+        </div>
         <button class="btn btn--primary push-bottom" data-go="weight">NEXT</button>
       </section>
 
@@ -124,16 +131,23 @@
         <div class="status-bar">9:41</div>
         <button class="back" data-go="height">‹</button>
         <p class="step" data-go="brands">Skip to next ›</p>
-        <h3 class="eyebrow">Get clothes<br/>that fit you better</h3>
-        <div class="tabs tabs--3">
-          <button class="tab" data-go="height">Select height</button>
+        <h3 class="eyebrow center title-measure">Get clothes<br/>that fit you better</h3>
+        <div class="tabs tabs-text">
+          <button class="tab" data-go="height">Select Height</button>
           <span class="tab-sep">›</span>
-          <button class="tab is-active" data-go="weight">Select weight</button>
+          <button class="tab is-active" data-go="weight">Select Weight</button>
           <span class="tab-sep">›</span>
-          <button class="tab" data-go="body">Select body type</button>
+          <button class="tab" data-go="body">Select Body type</button>
         </div>
-        <div class="picker" data-picker="weight" data-min="35" data-max="180" data-unit="kg"></div>
-        <div class="picker-hint">Drag · scroll · or use ▲ ▼</div>
+        <div class="picker"
+             data-picker="weight"
+             data-min="35" data-max="180"
+             data-alt-min="77" data-alt-max="396"
+             data-units="kg,lb"></div>
+        <div class="unit-toggle" data-toggle="weight">
+          <button class="on" data-unit="kg">KG</button>
+          <button data-unit="lb">LB</button>
+        </div>
         <button class="btn btn--primary push-bottom" data-go="body">NEXT</button>
       </section>
 
@@ -142,13 +156,13 @@
         <div class="status-bar">9:41</div>
         <button class="back" data-go="weight">‹</button>
         <p class="step" data-go="brands">Skip to next ›</p>
-        <h3 class="eyebrow">Get clothes<br/>that fit you better</h3>
-        <div class="tabs tabs--3">
-          <button class="tab" data-go="height">Select height</button>
+        <h3 class="eyebrow center title-measure">Get clothes<br/>that fit you better</h3>
+        <div class="tabs tabs-text">
+          <button class="tab" data-go="height">Select Height</button>
           <span class="tab-sep">›</span>
-          <button class="tab" data-go="weight">Select weight</button>
+          <button class="tab" data-go="weight">Select Weight</button>
           <span class="tab-sep">›</span>
-          <button class="tab is-active" data-go="body">Select body type</button>
+          <button class="tab is-active" data-go="body">Select Body type</button>
         </div>
         <div class="bodies">
           <button class="body-card is-selected" data-body="male">
@@ -340,6 +354,6 @@
       <button id="next" class="ctl">Next ›</button>
     </div>
   </div>
-<script src="app.js"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
