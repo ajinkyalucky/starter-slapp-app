@@ -91,8 +91,129 @@
     c.addEventListener("click", () => {
       document.querySelectorAll(".body-card").forEach((b) => b.classList.remove("is-selected"));
       c.classList.add("is-selected");
+      state.body = c.dataset.body;
+      renderSummary();
     });
   });
+
+  // ----- Shared profile state + interactive picker -----
+  const state = { height: 175, weight: 67, body: "male" };
+  const ITEM_H = 56;
+
+  function buildPicker(el) {
+    const min = +el.dataset.min;
+    const max = +el.dataset.max;
+    const unit = el.dataset.unit;
+    const key = el.dataset.picker;
+
+    el.innerHTML = "";
+    const track = document.createElement("div");
+    track.className = "picker-track";
+    for (let v = min; v <= max; v++) {
+      const item = document.createElement("div");
+      item.className = "picker-item";
+      item.textContent = v;
+      item.dataset.value = v;
+      track.appendChild(item);
+    }
+    el.appendChild(track);
+
+    const mark = document.createElement("div");
+    mark.className = "picker-mark";
+    mark.innerHTML = '<span class="arrow">‹</span><span class="bar"></span><span class="unit">' + unit + "</span>";
+    el.appendChild(mark);
+
+    let value = state[key];
+    let offset = 0;       // committed pixel offset
+    let dragOffset = 0;   // in-drag delta
+    let dragging = false;
+    let startY = 0;
+
+    function valueToOffset(v) { return -(v - min) * ITEM_H; }
+    function offsetToValue(o) {
+      const v = Math.round(-o / ITEM_H) + min;
+      return Math.max(min, Math.min(max, v));
+    }
+    function apply(animate) {
+      track.style.transition = animate ? "transform .18s ease-out" : "none";
+      track.style.transform = "translateY(calc(-50% + " + (offset + dragOffset) + "px))";
+      const live = offsetToValue(offset + dragOffset);
+      Array.from(track.children).forEach((it) => {
+        const v = +it.dataset.value;
+        const d = Math.abs(v - live);
+        it.classList.toggle("is-center", d === 0);
+        it.classList.toggle("is-near", d === 1);
+        it.style.opacity = d > 3 ? 0 : 1 - d * 0.18;
+      });
+    }
+    function commit() {
+      value = offsetToValue(offset + dragOffset);
+      offset = valueToOffset(value);
+      dragOffset = 0;
+      state[key] = value;
+      apply(true);
+      renderSummary();
+    }
+
+    offset = valueToOffset(value);
+    apply(false);
+
+    // Pointer drag
+    el.addEventListener("pointerdown", (e) => {
+      dragging = true;
+      startY = e.clientY;
+      el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      dragOffset = e.clientY - startY;
+      apply(false);
+    });
+    function endDrag(e) {
+      if (!dragging) return;
+      dragging = false;
+      try { el.releasePointerCapture(e.pointerId); } catch (_) {}
+      commit();
+    }
+    el.addEventListener("pointerup", endDrag);
+    el.addEventListener("pointercancel", endDrag);
+
+    // Wheel
+    el.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      offset -= Math.sign(e.deltaY) * ITEM_H;
+      offset = Math.max(valueToOffset(max), Math.min(valueToOffset(min), offset));
+      commit();
+    }, { passive: false });
+
+    // Keyboard when focused
+    el.tabIndex = 0;
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowUp")   { offset += ITEM_H; commit(); e.preventDefault(); }
+      if (e.key === "ArrowDown") { offset -= ITEM_H; commit(); e.preventDefault(); }
+    });
+
+    // Tap an item to jump
+    track.addEventListener("click", (e) => {
+      const item = e.target.closest(".picker-item");
+      if (!item) return;
+      offset = valueToOffset(+item.dataset.value);
+      commit();
+    });
+
+    return { refresh: () => { offset = valueToOffset(state[key]); apply(true); } };
+  }
+
+  const pickers = {};
+  document.querySelectorAll(".picker").forEach((el) => {
+    pickers[el.dataset.picker] = buildPicker(el);
+  });
+
+  function renderSummary() {
+    const s = document.getElementById("summary");
+    if (s) s.textContent = state.height + " cm · " + state.weight + " kg · " + state.body;
+  }
+  renderSummary();
 
   // Initial screen
   const initial = (location.hash || "#splash").slice(1);

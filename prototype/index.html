@@ -105,14 +105,17 @@
       <section class="screen screen--measure" data-screen="height">
         <div class="status-bar">9:41</div>
         <button class="back" data-go="name">‹</button>
-        <p class="step">Skip to next ›</p>
+        <p class="step" data-go="brands">Skip to next ›</p>
         <h3 class="eyebrow">Get clothes<br/>that fit you better</h3>
-        <div class="tabs"><b>Select height</b><span>Select weight</span></div>
-        <div class="ruler">
-          <div class="ruler-row">174</div>
-          <div class="ruler-row active"><b>175</b><span class="unit">cm</span><i class="arrow">‹</i></div>
-          <div class="ruler-row">176</div>
+        <div class="tabs tabs--3">
+          <button class="tab is-active" data-go="height">Select height</button>
+          <span class="tab-sep">›</span>
+          <button class="tab" data-go="weight">Select weight</button>
+          <span class="tab-sep">›</span>
+          <button class="tab" data-go="body">Select body type</button>
         </div>
+        <div class="picker" data-picker="height" data-min="140" data-max="220" data-unit="cm"></div>
+        <div class="picker-hint">Drag · scroll · or use ▲ ▼</div>
         <button class="btn btn--primary push-bottom" data-go="weight">NEXT</button>
       </section>
 
@@ -120,14 +123,17 @@
       <section class="screen screen--measure" data-screen="weight">
         <div class="status-bar">9:41</div>
         <button class="back" data-go="height">‹</button>
-        <p class="step">Skip to next ›</p>
+        <p class="step" data-go="brands">Skip to next ›</p>
         <h3 class="eyebrow">Get clothes<br/>that fit you better</h3>
-        <div class="tabs"><span>Select height</span><b>Select weight</b></div>
-        <div class="ruler">
-          <div class="ruler-row">66</div>
-          <div class="ruler-row active"><b>67</b><span class="unit">kg</span><i class="arrow">‹</i></div>
-          <div class="ruler-row">68</div>
+        <div class="tabs tabs--3">
+          <button class="tab" data-go="height">Select height</button>
+          <span class="tab-sep">›</span>
+          <button class="tab is-active" data-go="weight">Select weight</button>
+          <span class="tab-sep">›</span>
+          <button class="tab" data-go="body">Select body type</button>
         </div>
+        <div class="picker" data-picker="weight" data-min="35" data-max="180" data-unit="kg"></div>
+        <div class="picker-hint">Drag · scroll · or use ▲ ▼</div>
         <button class="btn btn--primary push-bottom" data-go="body">NEXT</button>
       </section>
 
@@ -135,19 +141,26 @@
       <section class="screen screen--body" data-screen="body">
         <div class="status-bar">9:41</div>
         <button class="back" data-go="weight">‹</button>
-        <p class="step">Skip to next ›</p>
+        <p class="step" data-go="brands">Skip to next ›</p>
         <h3 class="eyebrow">Get clothes<br/>that fit you better</h3>
-        <div class="tabs"><span>Select height</span><b>Select body type</b></div>
+        <div class="tabs tabs--3">
+          <button class="tab" data-go="height">Select height</button>
+          <span class="tab-sep">›</span>
+          <button class="tab" data-go="weight">Select weight</button>
+          <span class="tab-sep">›</span>
+          <button class="tab is-active" data-go="body">Select body type</button>
+        </div>
         <div class="bodies">
-          <button class="body-card is-selected">
+          <button class="body-card is-selected" data-body="male">
             <div class="silhouette male"></div>
             <span>Male</span>
           </button>
-          <button class="body-card">
+          <button class="body-card" data-body="female">
             <div class="silhouette female"></div>
             <span>Female</span>
           </button>
         </div>
+        <p class="summary" id="summary"></p>
         <button class="btn btn--primary push-bottom" data-go="brands">PROCEED</button>
       </section>
 
