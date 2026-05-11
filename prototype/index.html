@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>DRIP — Prototype</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="stage">
+    <aside class="map" id="map" aria-label="Screen navigator"></aside>
+
+    <div class="device" role="application">
+      <div class="device-notch"></div>
+
+      <!-- 1. Splash -->
+      <section class="screen screen--splash is-active" data-screen="splash">
+        <div class="logo">DRIP</div>
+      </section>
+
+      <!-- 2. Welcome / Signup -->
+      <section class="screen screen--welcome" data-screen="welcome">
+        <div class="status-bar">9:41</div>
+        <div class="welcome-head">
+          <h1>WELCOME TO DRIP</h1>
+          <div class="bullets">
+            <div><span class="dot"></span><div><b>Effortless shopping for men</b><div class="muted">3M+ quality checks</div></div></div>
+            <div><span class="dot"></span><div><b>Best price guaranteed</b><div class="muted">Easy returns with no-cost styles</div></div></div>
+          </div>
+        </div>
+        <div class="welcome-foot">
+          <label class="field">
+            <span>Mobile number</span>
+            <input type="tel" placeholder="+1 555 123 4567" />
+          </label>
+          <button class="btn btn--primary" data-go="verify">PROCEED</button>
+          <p class="legal">I accept DRIP's <a>Terms &amp; Conditions</a></p>
+        </div>
+      </section>
+
+      <!-- 3. Verification code -->
+      <section class="screen screen--otp" data-screen="verify">
+        <div class="status-bar">9:41</div>
+        <button class="back" data-go="welcome">‹</button>
+        <h2>Verify verification code</h2>
+        <p class="muted small">Enter the code we sent to <b>+1 555 123 4567</b>.<br/>Didn't get it? <a>Resend</a></p>
+        <div class="otp" id="otp">
+          <input maxlength="1" inputmode="numeric" />
+          <input maxlength="1" inputmode="numeric" />
+          <input maxlength="1" inputmode="numeric" />
+          <input maxlength="1" inputmode="numeric" />
+          <input maxlength="1" inputmode="numeric" />
+          <input maxlength="1" inputmode="numeric" />
+        </div>
+        <button class="btn btn--primary" data-go="permissions">VERIFY OTP</button>
+        <div class="keypad">
+          <button>1</button><button>2<small>ABC</small></button><button>3<small>DEF</small></button>
+          <button>4<small>GHI</small></button><button>5<small>JKL</small></button><button>6<small>MNO</small></button>
+          <button>7<small>PQRS</small></button><button>8<small>TUV</small></button><button>9<small>WXYZ</small></button>
+          <button class="ghost"></button><button>0</button><button class="ghost">⌫</button>
+        </div>
+      </section>
+
+      <!-- 4. Permissions -->
+      <section class="screen screen--permissions" data-screen="permissions">
+        <div class="status-bar">9:41</div>
+        <button class="back" data-go="verify">‹</button>
+        <p class="step">Skip to next ›</p>
+        <h2>Permissions</h2>
+        <ul class="perm-list">
+          <li>
+            <div class="icon">🔔</div>
+            <div>
+              <b>Push notifications</b>
+              <p class="muted small">Get exclusive drops, restocks &amp; price drops.</p>
+            </div>
+            <label class="switch"><input type="checkbox" checked><span></span></label>
+          </li>
+          <li>
+            <div class="icon">📍</div>
+            <div>
+              <b>Location permissions</b>
+              <p class="muted small">Show nearby stores and try-on dates.</p>
+            </div>
+            <label class="switch"><input type="checkbox"><span></span></label>
+          </li>
+        </ul>
+        <button class="btn btn--primary push-bottom" data-go="name">PROCEED</button>
+      </section>
+
+      <!-- 5. Name -->
+      <section class="screen screen--name" data-screen="name">
+        <div class="status-bar">9:41</div>
+        <button class="back" data-go="permissions">‹</button>
+        <p class="step">Skip to next ›</p>
+        <h2>Enter name</h2>
+        <label class="field">
+          <span>Full name</span>
+          <input type="text" placeholder="Ajinkya Lucky" />
+        </label>
+        <button class="btn btn--primary push-bottom" data-go="height">PROCEED</button>
+      </section>
+
+      <!-- 6. Height -->
+      <section class="screen screen--measure" data-screen="height">
+        <div class="status-bar">9:41</div>
+        <button class="back" data-go="name">‹</button>
+        <p class="step">Skip to next ›</p>
+        <h3 class="eyebrow">Get clothes<br/>that fit you better</h3>
+        <div class="tabs"><b>Select height</b><span>Select weight</span></div>
+        <div class="ruler">
+          <div class="ruler-row">174</div>
+          <div class="ruler-row active"><b>175</b><span class="unit">cm</span><i class="arrow">‹</i></div>
+          <div class="ruler-row">176</div>
+        </div>
+        <button class="btn btn--primary push-bottom" data-go="weight">NEXT</button>
+      </section>
+
+      <!-- 7. Weight -->
+      <section class="screen screen--measure" data-screen="weight">
+        <div class="status-bar">9:41</div>
+        <button class="back" data-go="height">‹</button>
+        <p class="step">Skip to next ›</p>
+        <h3 class="eyebrow">Get clothes<br/>that fit you better</h3>
+        <div class="tabs"><span>Select height</span><b>Select weight</b></div>
+        <div class="ruler">
+          <div class="ruler-row">66</div>
+          <div class="ruler-row active"><b>67</b><span class="unit">kg</span><i class="arrow">‹</i></div>
+          <div class="ruler-row">68</div>
+        </div>
+        <button class="btn btn--primary push-bottom" data-go="body">NEXT</button>
+      </section>
+
+      <!-- 8. Body type -->
+      <section class="screen screen--body" data-screen="body">
+        <div class="status-bar">9:41</div>
+        <button class="back" data-go="weight">‹</button>
+        <p class="step">Skip to next ›</p>
+        <h3 class="eyebrow">Get clothes<br/>that fit you better</h3>
+        <div class="tabs"><span>Select height</span><b>Select body type</b></div>
+        <div class="bodies">
+          <button class="body-card is-selected">
+            <div class="silhouette male"></div>
+            <span>Male</span>
+          </button>
+          <button class="body-card">
+            <div class="silhouette female"></div>
+            <span>Female</span>
+          </button>
+        </div>
+        <button class="btn btn--primary push-bottom" data-go="brands">PROCEED</button>
+      </section>
+
+      <!-- 9. Brands & sizes -->
+      <section class="screen screen--brands" data-screen="brands">
+        <div class="status-bar">9:41</div>
+        <button class="back" data-go="body">‹</button>
+        <p class="step">Skip to next ›</p>
+        <h3 class="eyebrow">Get brand-smart sizing</h3>
+        <p class="muted small">So you never have to guess your size again.</p>
+        <p class="section-label">TOP SIZES</p>
+        <div class="brand-row">
+          <div class="brand">H&amp;M</div>
+          <div class="sizes" data-sel="M">
+            <button>XS</button><button>S</button><button class="on">M</button><button>L</button><button>XL</button><button>XXL</button>
+          </div>
+        </div>
+        <div class="brand-row">
+          <div class="brand">ZARA</div>
+          <div class="sizes" data-sel="M">
+            <button>XS</button><button>S</button><button class="on">M</button><button>L</button><button>XL</button><button>XXL</button>
+          </div>
+        </div>
+        <div class="brand-row">
+          <div class="brand">UNIQLO</div>
+          <div class="sizes" data-sel="L">
+            <button>XS</button><button>S</button><button>M</button><button class="on">L</button><button>XL</button><button>XXL</button>
+          </div>
+        </div>
+        <p class="link">Add other brands</p>
+        <button class="btn btn--primary push-bottom" data-go="gmail">PROCEED</button>
+      </section>
+
+      <!-- 10. Connect Gmail -->
+      <section class="screen screen--gmail" data-screen="gmail">
+        <div class="status-bar">9:41</div>
+        <button class="back" data-go="brands">‹</button>
+        <p class="step">Skip to next ›</p>
+        <h3 class="eyebrow">Bring your shopping history to DRIP</h3>
+        <p class="muted small">We'll see what brands, sizes, and styles already work for you.</p>
+        <div class="boxes">
+          <div class="box"></div><div class="box"></div><div class="box"></div>
+        </div>
+        <button class="btn btn--gmail" data-go="colour"><span class="g">G</span> Connect Gmail</button>
+        <p class="muted tiny center">You'll be logging in via Google's secure OAuth.</p>
+      </section>
+
+      <!-- 11. Unlock colour store -->
+      <section class="screen screen--colour" data-screen="colour">
+        <div class="status-bar">9:41</div>
+        <button class="back" data-go="gmail">‹</button>
+        <p class="step">Skip to next ›</p>
+        <h3 class="eyebrow">Unlock your colour store</h3>
+        <p class="muted small">See the colours that make you look your best.</p>
+        <div class="card-portrait">
+          <div class="portrait"></div>
+          <div class="swatches">
+            <span style="background:#c9b59f"></span>
+            <span style="background:#9a6b3f"></span>
+            <span style="background:#4f311c"></span>
+            <span style="background:#222"></span>
+          </div>
+        </div>
+        <button class="btn btn--primary push-bottom" data-go="upload">PROCEED</button>
+      </section>
+
+      <!-- 12. Upload picture -->
+      <section class="screen screen--upload" data-screen="upload">
+        <div class="status-bar">9:41</div>
+        <button class="back" data-go="colour">‹</button>
+        <h3 class="eyebrow center">UPLOAD<br/>YOUR PICTURE</h3>
+        <div class="examples">
+          <div class="ex"></div><div class="ex"></div>
+          <p class="muted tiny center">Show us your face</p>
+        </div>
+        <p class="muted small center">Upload photo with front facing pose.</p>
+        <button class="btn btn--primary push-bottom" data-go="source">Upload</button>
+      </section>
+
+      <!-- 13. Source sheet -->
+      <section class="screen screen--source" data-screen="source">
+        <div class="status-bar">9:41</div>
+        <button class="back" data-go="upload">‹</button>
+        <h3 class="eyebrow center dim">UPLOAD<br/>YOUR PICTURE</h3>
+        <div class="examples dim">
+          <div class="ex"></div><div class="ex"></div>
+        </div>
+        <div class="sheet">
+          <p class="sheet-title">Choose source</p>
+          <button data-go="scan"><span>Photo Library</span><i>🖼️</i></button>
+          <button data-go="scan"><span>Take Video</span><i>📹</i></button>
+          <button data-go="scan"><span>Choose File</span><i>📁</i></button>
+        </div>
+      </section>
+
+      <!-- 14. Face scan -->
+      <section class="screen screen--scan" data-screen="scan">
+        <div class="scan-overlay">
+          <div class="scan-face">
+            <div class="scan-frame"></div>
+            <div class="scan-line"></div>
+            <div class="dots"></div>
+          </div>
+        </div>
+        <button class="back light" data-go="source">‹</button>
+        <p class="reject">Reject Photo</p>
+        <p class="scan-cta" data-go="palette">Tap when ready ›</p>
+      </section>
+
+      <!-- 15. Palette result -->
+      <section class="screen screen--palette" data-screen="palette">
+        <div class="status-bar">9:41</div>
+        <button class="back" data-go="scan">‹</button>
+        <div class="profile-hero light">
+          <div class="brand-mark">Tonacious</div>
+          <p class="muted tiny center">Here's your skin analysis</p>
+          <div class="portrait big"></div>
+          <div class="palette-swatches">
+            <span style="background:#d8c2a4"></span>
+            <span style="background:#b48a64"></span>
+            <span style="background:#7a4a2a"></span>
+            <span style="background:#3c2415"></span>
+            <span style="background:#0d0d0d"></span>
+          </div>
+        </div>
+        <button class="btn btn--primary push-bottom" data-go="boards">Generate my brand colors</button>
+      </section>
+
+      <!-- 16. Boards -->
+      <section class="screen screen--boards" data-screen="boards">
+        <div class="status-bar">9:41</div>
+        <button class="back" data-go="palette">‹</button>
+        <div class="profile-hero light">
+          <div class="brand-mark">Tonacious</div>
+          <p class="muted tiny center">Here's your style board</p>
+          <div class="portrait big"></div>
+          <div class="palette-swatches">
+            <span style="background:#efe4d2"></span>
+            <span style="background:#c8b59c"></span>
+            <span style="background:#90745b"></span>
+            <span style="background:#3a2a1d"></span>
+            <span style="background:#1a1a1a"></span>
+          </div>
+          <div class="board-grid">
+            <div class="board-item"></div>
+            <div class="board-item"></div>
+            <div class="board-item"></div>
+            <div class="board-item"></div>
+          </div>
+        </div>
+        <button class="btn btn--primary push-bottom" data-go="chat">Save it to my profile</button>
+      </section>
+
+      <!-- 17. Chat -->
+      <section class="screen screen--chat" data-screen="chat">
+        <div class="chat-head">
+          <button class="back light" data-go="boards">‹</button>
+          <span>Reject Photo</span>
+          <div class="avatar-stack"><span></span><span></span></div>
+        </div>
+        <div class="chat-body">
+          <div class="bubble in">Hey! I just dropped your colour analysis 🎨</div>
+          <div class="bubble in">Want me to start curating a capsule wardrobe based on your tones?</div>
+          <div class="bubble out">Yes please — keep it under $400.</div>
+          <div class="bubble in">On it. Three looks coming up shortly.</div>
+        </div>
+        <div class="chat-input">
+          <input placeholder="How can I help you?" />
+          <button>↑</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="controls">
+      <button id="prev" class="ctl">‹ Prev</button>
+      <span id="label" class="ctl-label">Splash</span>
+      <button id="next" class="ctl">Next ›</button>
+    </div>
+  </div>
+<script src="app.js"></script>
+</body>
+</html>
