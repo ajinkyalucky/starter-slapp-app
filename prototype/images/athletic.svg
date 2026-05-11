@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 360" aria-label="Athletic">
+  <defs>
+    <linearGradient id="sk2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0e3d1"/>
+      <stop offset="1" stop-color="#d8c2a4"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#sk2)" stroke="#bda57f" stroke-width=".7">
+    <circle cx="100" cy="40" r="22"/>
+    <path d="M86,60 q14,5 28,0 l5,18 q-19,5 -38,0 z"/>
+    <path d="M64,82 q36,-10 72,0 q8,4 6,18 l-8,46 q-32,10 -68,0 l-8,-46 q-2,-14 6,-18 z"/>
+    <path d="M62,100 q-10,4 -12,18 l-2,44 q3,10 9,10 q6,-2 7,-12 l3,-58 z"/>
+    <path d="M138,100 q10,4 12,18 l2,44 q-3,10 -9,10 q-6,-2 -7,-12 l-3,-58 z"/>
+    <path d="M80,146 q20,6 40,0 l-2,32 q-18,5 -36,0 z" fill="#a8917a"/>
+    <rect x="78" y="178" width="44" height="22" rx="4" fill="#998069"/>
+    <path d="M82,196 q-4,42 -2,94 q1,9 7,9 q7,0 8,-9 l3,-94 z"/>
+    <path d="M118,196 q4,42 2,94 q-1,9 -7,9 q-7,0 -8,-9 l-3,-94 z"/>
+  </g>
+</svg>

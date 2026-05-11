@@ -87,12 +87,17 @@
     });
   });
 
-  // Body type selection
+  // Body type selection (no default, fade others, gate CTA)
+  const bodiesGrid = document.getElementById("bodies-grid");
+  const bodyCta = document.getElementById("body-cta");
   document.querySelectorAll(".body-card").forEach((c) => {
     c.addEventListener("click", () => {
       document.querySelectorAll(".body-card").forEach((b) => b.classList.remove("is-selected"));
       c.classList.add("is-selected");
+      if (bodiesGrid) bodiesGrid.classList.add("has-selection");
       state.body = c.dataset.body;
+      if (bodyCta) bodyCta.removeAttribute("disabled");
+      haptic(12);
       renderSummary();
     });
   });
@@ -101,9 +106,15 @@
   const state = {
     height_cm: 175, height_ft: 69,   // 5'9"
     weight_kg: 67,  weight_lb: 148,
-    body: "male",
+    body: null,
   };
   const ITEM_H = 56;
+
+  function haptic(ms) {
+    try {
+      if (navigator.vibrate) navigator.vibrate(ms);
+    } catch (_) {}
+  }
 
   function buildPicker(el) {
     const minA = +el.dataset.min;
@@ -183,11 +194,22 @@
     }
     function commit() {
       const v = offsetToValue(offset + dragOffset);
+      const prev = getValue();
       offset = valueToOffset(v);
       dragOffset = 0;
       setValue(v);
       apply(true);
       renderSummary();
+      if (v !== prev) {
+        haptic(8);
+        const center = track.querySelector(".picker-item.is-center");
+        if (center) {
+          center.classList.remove("is-pulse");
+          // force reflow so the animation restarts every change
+          void center.offsetWidth;
+          center.classList.add("is-pulse");
+        }
+      }
     }
 
     function setUnit(u) {
@@ -198,14 +220,21 @@
       apply(false);
     }
 
+    let lastTickedValue = null;
     el.addEventListener("pointerdown", (e) => {
       dragging = true; startY = e.clientY;
+      lastTickedValue = offsetToValue(offset);
       try { el.setPointerCapture(e.pointerId); } catch (_) {}
     });
     el.addEventListener("pointermove", (e) => {
       if (!dragging) return;
       dragOffset = e.clientY - startY;
       apply(false);
+      const live = offsetToValue(offset + dragOffset);
+      if (live !== lastTickedValue) {
+        lastTickedValue = live;
+        haptic(5);
+      }
     });
     function endDrag(e) {
       if (!dragging) return;
@@ -271,7 +300,8 @@
     const wU = pickers.weight ? pickers.weight.activeUnit : "kg";
     const h = state["height_" + hU];
     const w = state["weight_" + wU];
-    s.textContent = h + " " + hU + " · " + w + " " + wU + " · " + state.body;
+    const body = state.body ? " · " + state.body : "";
+    s.textContent = h + " " + hU + " · " + w + " " + wU + body;
   }
   renderSummary();
 

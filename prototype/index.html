@@ -164,18 +164,26 @@
           <span class="tab-sep">›</span>
           <button class="tab is-active" data-go="body">Select Body type</button>
         </div>
-        <div class="bodies">
-          <button class="body-card is-selected" data-body="male">
-            <div class="silhouette male"></div>
-            <span>Male</span>
+        <div class="bodies-grid" id="bodies-grid">
+          <button class="body-card" data-body="slim">
+            <img src="images/slim.svg" alt="Slim" />
+            <span>Slim</span>
           </button>
-          <button class="body-card" data-body="female">
-            <div class="silhouette female"></div>
-            <span>Female</span>
+          <button class="body-card" data-body="athletic">
+            <img src="images/athletic.svg" alt="Athletic" />
+            <span>Athletic</span>
+          </button>
+          <button class="body-card" data-body="heavyset">
+            <img src="images/heavyset.svg" alt="Heavyset" />
+            <span>Heavyset</span>
+          </button>
+          <button class="body-card" data-body="muscular">
+            <img src="images/muscular.svg" alt="Muscular" />
+            <span>Muscular</span>
           </button>
         </div>
         <p class="summary" id="summary"></p>
-        <button class="btn btn--primary push-bottom" data-go="brands">PROCEED</button>
+        <button class="btn btn--primary push-bottom" data-go="brands" id="body-cta" disabled>PROCEED</button>
       </section>
 
       <!-- 9. Brands & sizes -->

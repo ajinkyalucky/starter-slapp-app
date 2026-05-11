@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 360" aria-label="Muscular">
+  <defs>
+    <linearGradient id="sk4" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0e3d1"/>
+      <stop offset="1" stop-color="#d8c2a4"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#sk4)" stroke="#bda57f" stroke-width=".8">
+    <circle cx="100" cy="40" r="22"/>
+    <path d="M82,60 q18,5 36,0 l6,16 q-24,6 -48,0 z"/>
+    <path d="M48,84 q52,-16 104,0 q10,4 8,18 l-10,52 q-46,14 -100,0 l-10,-52 q-2,-14 8,-18 z"/>
+    <ellipse cx="46" cy="118" rx="18" ry="32"/>
+    <ellipse cx="154" cy="118" rx="18" ry="32"/>
+    <path d="M44,148 q-6,4 -8,18 l-2,40 q4,9 10,9 q6,-2 7,-12 l3,-56 z"/>
+    <path d="M156,148 q6,4 8,18 l2,40 q-4,9 -10,9 q-6,-2 -7,-12 l-3,-56 z"/>
+    <path d="M70,150 q30,8 60,0 l-2,32 q-28,8 -56,0 z" fill="#a8917a"/>
+    <rect x="68" y="182" width="64" height="24" rx="5" fill="#998069"/>
+    <path d="M72,204 q-2,42 4,94 q1,9 9,9 q8,0 9,-9 l3,-94 z"/>
+    <path d="M128,204 q2,42 -4,94 q-1,9 -9,9 q-8,0 -9,-9 l-3,-94 z"/>
+  </g>
+</svg>
