@@ -38,6 +38,7 @@
     Array.from(map.children).forEach((b) => b.classList.toggle("is-active", b.dataset.go === id));
     label.textContent = labels[id] || id;
     window.history.replaceState(null, "", "#" + id);
+    if (window._pickers && window._pickers[id]) window._pickers[id].refresh();
   }
 
   // Click handlers on anything with [data-go]
@@ -123,20 +124,21 @@
     mark.innerHTML = '<span class="arrow">‹</span><span class="bar"></span><span class="unit">' + unit + "</span>";
     el.appendChild(mark);
 
+    const center = () => el.clientHeight / 2 - ITEM_H / 2;
     let value = state[key];
-    let offset = 0;       // committed pixel offset
-    let dragOffset = 0;   // in-drag delta
+    let offset = 0;
+    let dragOffset = 0;
     let dragging = false;
     let startY = 0;
 
-    function valueToOffset(v) { return -(v - min) * ITEM_H; }
+    function valueToOffset(v) { return center() - (v - min) * ITEM_H; }
     function offsetToValue(o) {
-      const v = Math.round(-o / ITEM_H) + min;
+      const v = Math.round((center() - o) / ITEM_H) + min;
       return Math.max(min, Math.min(max, v));
     }
     function apply(animate) {
       track.style.transition = animate ? "transform .18s ease-out" : "none";
-      track.style.transform = "translateY(calc(-50% + " + (offset + dragOffset) + "px))";
+      track.style.transform = "translateY(" + (offset + dragOffset) + "px)";
       const live = offsetToValue(offset + dragOffset);
       Array.from(track.children).forEach((it) => {
         const v = +it.dataset.value;
@@ -208,6 +210,7 @@
   document.querySelectorAll(".picker").forEach((el) => {
     pickers[el.dataset.picker] = buildPicker(el);
   });
+  window._pickers = pickers;
 
   function renderSummary() {
     const s = document.getElementById("summary");
