@@ -11,6 +11,16 @@
     try { if (navigator.vibrate) navigator.vibrate(ms); } catch (_) {}
   }
 
+  // Fall back from .png → .svg so the prototype shows the placeholder
+  // silhouettes/logos until the user drops real PNGs into prototype/images/.
+  document.addEventListener("error", (e) => {
+    const img = e.target;
+    if (img && img.tagName === "IMG" && /\.png$/.test(img.src) && !img.dataset.fallback) {
+      img.dataset.fallback = "1";
+      img.src = img.src.replace(/\.png$/, ".svg");
+    }
+  }, true);
+
   const screens = Array.from(document.querySelectorAll(".screen"));
   const order = screens.map((s) => s.dataset.screen);
   const map = document.getElementById("map");
