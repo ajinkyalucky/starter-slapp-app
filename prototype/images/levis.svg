@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 90" aria-label="Levi's">
+  <path d="M4,16 L156,16 L156,52 Q156,68 124,72 Q80,78 36,72 Q4,68 4,52 Z"
+        fill="#cf202f"/>
+  <text x="78" y="56" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-style="italic" font-weight="900" font-size="34"
+        fill="#fff">Levi's</text>
+  <text x="134" y="30" font-family="Arial, sans-serif" font-size="10" fill="#fff">®</text>
+</svg>

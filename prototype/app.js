@@ -1,4 +1,16 @@
 (function () {
+  // Shared state hoisted above all handlers so brand/body code can reach it.
+  const state = {
+    height_cm: 175, height_ft: 69,
+    weight_kg: 67,  weight_lb: 148,
+    body: null,
+    brands: {},
+  };
+  const ITEM_H = 56;
+  function haptic(ms) {
+    try { if (navigator.vibrate) navigator.vibrate(ms); } catch (_) {}
+  }
+
   const screens = Array.from(document.querySelectorAll(".screen"));
   const order = screens.map((s) => s.dataset.screen);
   const map = document.getElementById("map");
@@ -77,15 +89,29 @@
     });
   }
 
-  // Brand size selection
-  document.querySelectorAll(".sizes").forEach((row) => {
-    row.addEventListener("click", (e) => {
+  // Brand size selection — single-select per brand row, CTA gated on any pick
+  const brandsCta = document.getElementById("brands-cta");
+  state.brands = {};
+  function updateBrandsCta() {
+    const any = Object.values(state.brands).some(Boolean);
+    if (brandsCta) {
+      if (any) brandsCta.removeAttribute("disabled");
+      else     brandsCta.setAttribute("disabled", "");
+    }
+  }
+  document.querySelectorAll(".brand-row").forEach((row) => {
+    const brand = row.dataset.brand;
+    const sizes = row.querySelector(".sizes");
+    sizes.addEventListener("click", (e) => {
       const btn = e.target.closest("button");
       if (!btn) return;
-      row.querySelectorAll("button").forEach((b) => b.classList.remove("on"));
-      btn.classList.add("on");
+      sizes.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === btn));
+      state.brands[brand] = btn.dataset.size;
+      updateBrandsCta();
+      haptic(8);
     });
   });
+  updateBrandsCta();
 
   // Body type selection (no default, fade others, gate CTA)
   const bodiesGrid = document.getElementById("bodies-grid");
@@ -102,19 +128,10 @@
     });
   });
 
-  // ----- Shared profile state + interactive picker -----
-  const state = {
-    height_cm: 175, height_ft: 69,   // 5'9"
-    weight_kg: 67,  weight_lb: 148,
-    body: null,
-  };
-  const ITEM_H = 56;
+  // ----- Interactive picker -----
+  // state, ITEM_H, haptic are defined at the top of the IIFE so they
+  // are accessible to brand/body handlers declared above this block.
 
-  function haptic(ms) {
-    try {
-      if (navigator.vibrate) navigator.vibrate(ms);
-    } catch (_) {}
-  }
 
   function buildPicker(el) {
     const minA = +el.dataset.min;

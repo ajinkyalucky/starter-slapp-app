@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" aria-label="UNIQLO">
+  <rect width="80" height="80" fill="#e3001b"/>
+  <text x="40" y="36" text-anchor="middle"
+        font-family="'Helvetica Neue', Arial, sans-serif"
+        font-weight="900" font-size="20" fill="#fff" letter-spacing="-1">UNI</text>
+  <text x="40" y="62" text-anchor="middle"
+        font-family="'Helvetica Neue', Arial, sans-serif"
+        font-weight="900" font-size="20" fill="#fff" letter-spacing="-1">QLO</text>
+</svg>

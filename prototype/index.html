@@ -190,30 +190,56 @@
       <section class="screen screen--brands" data-screen="brands">
         <div class="status-bar">9:41</div>
         <button class="back" data-go="body">‹</button>
-        <p class="step">Skip to next ›</p>
-        <h3 class="eyebrow">Get brand-smart sizing</h3>
-        <p class="muted small">So you never have to guess your size again.</p>
-        <p class="section-label">TOP SIZES</p>
-        <div class="brand-row">
-          <div class="brand">H&amp;M</div>
-          <div class="sizes" data-sel="M">
-            <button>XS</button><button>S</button><button class="on">M</button><button>L</button><button>XL</button><button>XXL</button>
-          </div>
+        <p class="step" data-go="gmail">Skip to next</p>
+        <div class="brands-head">
+          <h3 class="brands-title">Get brand-smart sizing</h3>
+          <p class="brands-sub">So you never have to guess your size again</p>
         </div>
-        <div class="brand-row">
-          <div class="brand">ZARA</div>
-          <div class="sizes" data-sel="M">
-            <button>XS</button><button>S</button><button class="on">M</button><button>L</button><button>XL</button><button>XXL</button>
+        <div class="brands-body">
+          <p class="brands-section">TOP BRANDS</p>
+          <div class="brand-row" data-brand="hm">
+            <img class="brand-logo" src="images/hm.svg" alt="H&amp;M" />
+            <div class="sizes">
+              <button data-size="S">S</button>
+              <button data-size="M">M</button>
+              <button data-size="L">L</button>
+              <button data-size="XL">XL</button>
+              <button data-size="XXL">XXL</button>
+            </div>
           </div>
-        </div>
-        <div class="brand-row">
-          <div class="brand">UNIQLO</div>
-          <div class="sizes" data-sel="L">
-            <button>XS</button><button>S</button><button>M</button><button class="on">L</button><button>XL</button><button>XXL</button>
+          <div class="brand-row" data-brand="zara">
+            <img class="brand-logo" src="images/zara.svg" alt="ZARA" />
+            <div class="sizes">
+              <button data-size="S">S</button>
+              <button data-size="M">M</button>
+              <button data-size="L">L</button>
+              <button data-size="XL">XL</button>
+              <button data-size="XXL">XXL</button>
+            </div>
           </div>
+          <div class="brand-row" data-brand="uniqlo">
+            <img class="brand-logo" src="images/uniqlo.svg" alt="UNIQLO" />
+            <div class="sizes">
+              <button data-size="S">S</button>
+              <button data-size="M">M</button>
+              <button data-size="L">L</button>
+              <button data-size="XL">XL</button>
+              <button data-size="XXL">XXL</button>
+            </div>
+          </div>
+          <div class="brand-row" data-brand="levis">
+            <img class="brand-logo" src="images/levis.svg" alt="Levi's" />
+            <div class="sizes">
+              <button data-size="S">S</button>
+              <button data-size="M">M</button>
+              <button data-size="L">L</button>
+              <button data-size="XL">XL</button>
+              <button data-size="XXL">XXL</button>
+            </div>
+          </div>
+          <p class="brands-more">Select other brands</p>
         </div>
-        <p class="link">Add other brands</p>
-        <button class="btn btn--primary push-bottom" data-go="gmail">PROCEED</button>
+        <button class="btn btn--primary" id="brands-cta" data-go="gmail" disabled>PROCEED</button>
       </section>
 
       <!-- 10. Connect Gmail -->
