@@ -1,0 +1,41 @@
+name: Fetch prototype images
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Download images
+        working-directory: prototype/images
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 -o slim.png      https://i.postimg.cc/qvgQcvgc/slim.png
+          curl -fL --retry 3 -o athletic.png  https://i.postimg.cc/RVSgFRBk/athletic.png
+          curl -fL --retry 3 -o heavyset.png  https://i.postimg.cc/5NsnFC9q/heavyset.png
+          curl -fL --retry 3 -o muscular.png  https://i.postimg.cc/Hkj30kjy/muscular.png
+          curl -fL --retry 3 -o hm.png        https://i.postimg.cc/qM1jC3Bx/hm.png
+          curl -fL --retry 3 -o zara.png      https://i.postimg.cc/CxdJCxds/zara.png
+          curl -fL --retry 3 -o uniqlo.png    https://i.postimg.cc/8zswdzsB/uniqlo.png
+          curl -fL --retry 3 -o levis.png     https://i.postimg.cc/NjLb8jLX/levis.png
+          ls -la
+
+      - name: Commit and push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prototype/images/*.png
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Add prototype body/brand images from postimg.cc URLs"
+          git push origin HEAD:${GITHUB_REF#refs/heads/}
