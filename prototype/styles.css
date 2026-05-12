@@ -81,7 +81,7 @@ body {
 
 .bubble p {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.35;
   color: var(--accent);
   font-weight: 500;
@@ -94,12 +94,13 @@ body {
   min-height: 520px;
 }
 
+/* Model occupies the left side; keep it slim so the right column has room. */
 .model {
   position: absolute;
-  left: 0;
-  top: 60px;
-  width: 55%;
-  height: 460px;
+  left: 4px;
+  top: 30px;
+  width: 180px;
+  height: 480px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -114,90 +115,95 @@ body {
 }
 
 .model.is-loading img {
-  opacity: 0.25;
+  opacity: 0.3;
 }
 
-/* Thumbnails */
+/* Thumbnails column on the right */
 .thumbs {
   position: absolute;
-  right: 14px;
-  top: 0;
-  width: 56%;
-  height: 540px;
+  right: 6px;
+  top: 10px;
+  width: 230px;
+  height: 500px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 16px 8px;
+  justify-content: space-between;
+  padding: 0;
 }
 
 .thumb {
   background: transparent;
-  border: none;
-  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 180ms ease, filter 180ms ease;
+  transition: transform 180ms ease, border-color 180ms ease;
+  width: 76px;
+  height: 76px;
 }
 
 .thumb img {
-  width: 64px;
-  height: 64px;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  filter: grayscale(0%);
   transition: transform 180ms ease;
 }
 
-.thumb:hover img {
-  transform: scale(1.08);
+.thumb:hover {
+  transform: translateY(-2px);
 }
 
 .thumb.is-selected {
-  /* Selected thumb gets visually replaced by the product card slot */
-  visibility: hidden;
+  border-color: var(--accent);
+  background: rgba(108, 92, 231, 0.06);
 }
 
-/* Position individual thumbs to match the reference layout */
+/* The "featured" slot is replaced by the product card */
+.thumb.is-featured-slot {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Stagger horizontal positions so the thumbs feel hand-placed like the ref */
 .thumb--1 {
   align-self: center;
-  margin-left: 30px;
 }
 .thumb--2 {
   align-self: flex-start;
-  margin-left: 0;
+  margin-left: 4px;
 }
 .thumb--3 {
   align-self: flex-start;
-  margin-left: -6px;
 }
 .thumb--4 {
   align-self: center;
-  margin-left: 10px;
+  margin-left: 18px;
 }
 .thumb--5 {
   align-self: flex-start;
-  margin-left: 36px;
+  margin-left: 14px;
 }
 
-/* Product card */
+/* Product card sits in the middle of the right column, anchored.
+   It does NOT move based on selection — only its contents update. */
 .product-card {
   position: absolute;
-  right: 14px;
-  top: 220px;
-  width: calc(100% - 28px);
-  max-width: 340px;
+  right: 6px;
+  top: 200px;
+  width: 240px;
   display: grid;
-  grid-template-columns: 110px 1fr;
-  gap: 14px;
+  grid-template-columns: 100px 1fr;
+  gap: 10px;
   align-items: center;
-  background: transparent;
-  padding: 6px 4px;
+  padding: 0;
 }
 
 .product-card__image {
-  width: 110px;
-  height: 110px;
+  width: 100px;
+  height: 100px;
   border-radius: var(--radius-md);
   background: var(--card-bg);
   display: flex;
@@ -215,56 +221,63 @@ body {
 .product-card__info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .brand {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .title {
   margin: 0;
-  font-size: 13px;
-  letter-spacing: 0.05em;
+  font-size: 11px;
+  letter-spacing: 0.04em;
   color: var(--muted);
   text-transform: uppercase;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .price {
   margin: 6px 0 4px;
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 6px;
 }
 
 .price__now {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .price__was {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--muted);
   text-decoration: line-through;
 }
 
 .add-btn {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   border: 1.5px solid var(--ink);
   border-radius: 4px;
   background: transparent;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
   align-self: flex-start;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
 }
 
 .add-btn:hover {
