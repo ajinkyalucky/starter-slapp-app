@@ -1,0 +1,20 @@
+name: FlightNode build
+on:
+  push:
+    paths: ["FlightNode/**", ".github/workflows/flightnode-build.yml"]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: FlightNode
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: xcodegen
+      - name: Build for iOS Simulator (compile check, no signing)
+        run: |
+          xcodebuild -project FlightNode.xcodeproj -scheme FlightNode \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -60
