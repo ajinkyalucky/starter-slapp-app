@@ -49,6 +49,8 @@ struct Timetable: Decodable {
     let calendar: Calendar
     let patterns: [String: Pattern]
     let trips: [Trip]
+    /// Station ID to its name in Kannada script.
+    let kannadaNames: [String: String]?
 
     static let bundled: Timetable = {
         guard let url = Bundle(for: TimetableBundleToken.self).url(forResource: "timetable", withExtension: "json"),

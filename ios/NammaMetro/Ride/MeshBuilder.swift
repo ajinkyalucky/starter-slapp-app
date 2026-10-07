@@ -128,6 +128,36 @@ struct MeshBuilder {
         }
     }
 
+    /// Flat polygon from precomputed triangles, facing `normal`.
+    mutating func polygon(_ slot: Int, points: [SIMD3<Float>], triangles: [(Int, Int, Int)], normal: SIMD3<Float>) {
+        let ids = points.map { vertex($0, normal, [$0.x / 4, $0.z / 4]) }
+        for (a, b, c) in triangles { triangle(slot, ids[a], ids[b], ids[c], facing: normal) }
+    }
+
+    /// Smooth ellipsoid (a tree canopy), `segments` around and `rings` top to bottom.
+    mutating func ellipsoid(_ slot: Int, center: SIMD3<Float>, radii: SIMD3<Float>, segments: Int = 7, rings: Int = 5) {
+        var ids: [[UInt32]] = []
+        for r in 0...rings {
+            let phi = Float(r) / Float(rings) * .pi          // 0 at top
+            var row: [UInt32] = []
+            for k in 0...segments {
+                let theta = Float(k) / Float(segments) * 2 * .pi
+                let unit = SIMD3<Float>(sin(phi) * cos(theta), cos(phi), sin(phi) * sin(theta))
+                let n = simd_normalize(unit / radii)   // ellipsoid normal
+                row.append(vertex(center + unit * radii, n, [Float(k) / Float(segments), Float(r) / Float(rings)]))
+            }
+            ids.append(row)
+        }
+        for r in 0..<rings {
+            for k in 0..<segments {
+                let theta = (Float(k) + 0.5) / Float(segments) * 2 * .pi, phi = (Float(r) + 0.5) / Float(rings) * .pi
+                let facing = SIMD3<Float>(sin(phi) * cos(theta), cos(phi), sin(phi) * sin(theta))
+                triangle(slot, ids[r][k], ids[r][k + 1], ids[r + 1][k + 1], facing: facing)
+                triangle(slot, ids[r][k], ids[r + 1][k + 1], ids[r + 1][k], facing: facing)
+            }
+        }
+    }
+
     /// Capped cylinder around `axis` (unit), smooth-shaded sides.
     mutating func cylinder(_ slot: Int, center: SIMD3<Float>, axis: SIMD3<Float>, radius: Float,
                            halfLength: Float, segments: Int = 20) {

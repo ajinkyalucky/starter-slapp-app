@@ -344,12 +344,29 @@ final class TrainFactory {
         }
     }
 
-    /// Amber LED destination display above the windscreen.
+    private static let boardLock = NSLock()
+    private static var boardImages: [String: UIImage] = [:]
+
+    /// Amber LED destination display above the windscreen. Images are cached per
+    /// destination so trains entering view don't redraw text on the render thread.
     private static func destinationBoard(_ text: String) -> SCNNode {
+        boardLock.lock()
+        let cached = boardImages[text]
+        boardLock.unlock()
+        let image = cached ?? boardImage(text)
+        if cached == nil {
+            boardLock.lock()
+            boardImages[text] = image
+            boardLock.unlock()
+        }
+        return boardNode(image)
+    }
+
+    private static func boardImage(_ text: String) -> UIImage {
         let size = CGSize(width: 512, height: 72)
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
-        let image = UIGraphicsImageRenderer(size: size, format: format).image { ctx in
+        return UIGraphicsImageRenderer(size: size, format: format).image { ctx in
             UIColor(white: 0.04, alpha: 1).setFill()
             ctx.fill(CGRect(origin: .zero, size: size))
             let attrs: [NSAttributedString.Key: Any] = [
@@ -364,6 +381,9 @@ final class TrainFactory {
             ctx.cgContext.scaleBy(x: scale, y: 1)
             s.draw(at: CGPoint(x: -b.width / 2, y: -b.height / 2))
         }
+    }
+
+    private static func boardNode(_ image: UIImage) -> SCNNode {
         let plane = SCNPlane(width: 1.1, height: 0.155)
         let m = SCNMaterial()
         m.lightingModel = .constant

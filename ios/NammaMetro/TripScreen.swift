@@ -49,13 +49,19 @@ struct TripView: View {
                         AccuracyNote(feed: feed, lineIDs: Set(journey.legs.map(\.lineID)))
                     }
                 }
+                .onChange(of: announcement(progress, times: times)) { _, next in
+                    if let next { MetroAudio.shared.announceNext(stationID: next.stationID, lineID: next.lineID, isLast: next.isLast) }
+                }
             } else {
                 ContentUnavailableView("No trip", systemImage: "tram", description: Text("Plan a journey and tap Start trip."))
             }
         }
         .navigationTitle("Trip")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear { MetroAudio.shared.start(context: .trip) }
+        .onDisappear { MetroAudio.shared.stop() }
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { SoundMenu(trip: true) }
             if tracker.journey != nil {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("End", role: .destructive) {
@@ -65,6 +71,21 @@ struct TripView: View {
                 }
             }
         }
+    }
+
+    struct Announcement: Equatable {
+        let stationID: String
+        let lineID: String
+        /// The train terminates there.
+        let isLast: Bool
+    }
+
+    /// The stop to announce: the next one, as soon as the train leaves the previous stop.
+    private func announcement(_ progress: TripProgress, times: JourneyTimes) -> Announcement? {
+        guard case .riding(let n, let next, _) = progress else { return nil }
+        let leg = times.legs[n]
+        let id = leg.stops[next].stationID
+        return Announcement(stationID: id, lineID: leg.leg.lineID, isLast: MetroNetwork.stations[id]?.name == leg.leg.towards)
     }
 
     private func highlight(_ progress: TripProgress, leg n: Int) -> Int? {

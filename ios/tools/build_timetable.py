@@ -15,6 +15,7 @@ Output, all times in seconds:
     patterns: per line and direction, our station IDs in travel order with the
               run time to the next station and the dwell at each station
     trips:    [service, line, direction, from index, to index, departure from the first stop]
+    kannadaNames: station ID -> name in Kannada script
 """
 import collections
 import csv
@@ -168,11 +169,20 @@ def main():
             calendar["exceptions"][row["date"]] = row["service_id"]
     info = read("feed_info")[0]
 
+    # Kannada station names, for the trilingual announcements.
+    kannada = {}
+    for row in read("translations"):
+        if row["table_name"] == "stops" and row["field_name"] == "stop_name" and row["language"] == "kn":
+            for (line, code), i in code_index.items():
+                if code == row["record_id"]:
+                    kannada[patterns[line]["stations"][i]] = row["translation"]
+
     out_trips.sort(key=lambda t: (t[0], t[1], t[2], t[5]))
     result = {
         "attribution": "Timetable: BMRCL, via github.com/Vonter/bmrcl-gtfs (ODbL 1.0)",
         "validUntil": info.get("feed_end_date", ""),
         "calendar": calendar,
+        "kannadaNames": kannada,
         "patterns": patterns,
         "trips": out_trips,
     }

@@ -33,10 +33,8 @@ struct MapScreen: View {
 
     var body: some View {
         ZStack {
-            TimelineView(.animation(minimumInterval: 1.0 / 15, paused: rideShown)) { context in
-                liveMap(at: context.date)
-            }
-            .overlay(alignment: .bottom) { legend.opacity(ride == nil ? 1 : 0) }
+            liveMap
+                .overlay(alignment: .bottom) { legend.opacity(ride == nil ? 1 : 0) }
 
             if let ride {
                 RideView(feed: feed, trainID: ride.id, camera: ride.camera, entry: ride.entry, started: rideShown,
@@ -46,6 +44,7 @@ struct MapScreen: View {
             }
         }
         .toolbar(ride == nil ? .automatic : .hidden, for: .tabBar)
+        .task { RideAssets.prewarm() }
         .sheet(item: $selectedStation) { station in
             NavigationStack { StationDetailView(feed: feed, station: station) }
                 .presentationDetents([.medium, .large])
@@ -86,7 +85,7 @@ struct MapScreen: View {
             ride?.entry = RideEntry(center: cam.centerCoordinate, distance: cam.distance, heading: cam.heading,
                                     pitch: cam.pitch)
         }
-        withAnimation(.easeInOut(duration: 0.45)) { rideShown = true }
+        withAnimation(.easeInOut(duration: 0.6)) { rideShown = true }
     }
 
     private func closeRide() {
@@ -123,16 +122,13 @@ struct MapScreen: View {
         MetroNetwork.lines.filter { !hiddenLines.contains($0.id) }
     }
 
-    private func liveMap(at date: Date) -> some View {
-        let trains: [Train] = feed.trains(at: date).filter { !hiddenLines.contains($0.lineID) }
-        let scale = metersPerPoint
-        return MapReader { proxy in
+    /// The map itself is static (lines and stations); trains are drawn on a canvas
+    /// above it every display frame, so they glide and the map never re-lays overlays.
+    private var liveMap: some View {
+        MapReader { proxy in
             Map(position: $camera) {
                 ForEach(visibleLines) { line in
                     lineContent(line)
-                }
-                ForEach(trains) { train in
-                    trainContent(train, metersPerPoint: scale)
                 }
             }
             .mapStyle(.standard(elevation: .realistic, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
@@ -152,7 +148,18 @@ struct MapScreen: View {
             .onTapGesture { point in
                 if let train = train(near: point, proxy: proxy) { startRide(train) }
             }
-            .overlay(alignment: .top) { header(trainCount: trains.count).opacity(ride == nil ? 1 : 0) }
+            .overlay {
+                TimelineView(.animation(paused: rideShown)) { context in
+                    Canvas { gc, _ in drawTrains(at: context.date, in: gc, proxy: proxy) }
+                }
+                .allowsHitTesting(false)
+            }
+            .overlay(alignment: .top) {
+                TimelineView(.periodic(from: .now, by: 2)) { context in
+                    header(trainCount: feed.trains(at: context.date).filter { !hiddenLines.contains($0.lineID) }.count)
+                }
+                .opacity(ride == nil ? 1 : 0)
+            }
         }
     }
 
@@ -171,20 +178,19 @@ struct MapScreen: View {
         }
     }
 
-    /// A train as a short bar riding its own side of the track, white head first.
-    @MapContentBuilder
-    private func trainContent(_ train: Train, metersPerPoint m: Double) -> some MapContent {
-        let path = trainPath(train, metersPerPoint: m)
-        let color = MetroNetwork.line(train.lineID)?.color ?? .gray
-        MapPolyline(coordinates: path)
-            .stroke(.white, style: StrokeStyle(lineWidth: 9, lineCap: .round, lineJoin: .round))
-            .mapOverlayLevel(level: .aboveLabels)
-        MapPolyline(coordinates: path)
-            .stroke(color, style: StrokeStyle(lineWidth: 5.5, lineCap: .round, lineJoin: .round))
-            .mapOverlayLevel(level: .aboveLabels)
-        MapCircle(center: path[0], radius: m * 2.6)
-            .foregroundStyle(.white)
-            .mapOverlayLevel(level: .aboveLabels)
+    /// Each train as a short bar riding its own side of the track, white head first.
+    private func drawTrains(at date: Date, in gc: GraphicsContext, proxy: MapProxy) {
+        let m = metersPerPoint
+        for train in feed.trains(at: date) where !hiddenLines.contains(train.lineID) {
+            let points = trainPath(train, metersPerPoint: m).compactMap { proxy.convert($0, to: .local) }
+            guard points.count > 1, let head = points.first else { continue }
+            var path = Path()
+            path.addLines(points)
+            let color = MetroNetwork.line(train.lineID)?.color ?? .gray
+            gc.stroke(path, with: .color(.white), style: StrokeStyle(lineWidth: 8, lineCap: .round, lineJoin: .round))
+            gc.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+            gc.fill(Path(ellipseIn: CGRect(x: head.x - 3.2, y: head.y - 3.2, width: 6.4, height: 6.4)), with: .color(.white))
+        }
     }
 
     /// Head-first coordinates of a train's bar. It is drawn ~32 pt long (never

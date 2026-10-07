@@ -58,9 +58,8 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
     var onReady: (() -> Void)?
     private var announcedReady = false
 
-    private let materials = MetroMaterials()
-    private var factories: [String: TrainFactory] = [:]
-    private var sceneries: [LineScenery] = []
+    private let assets = RideAssets.shared
+    private var materials: MetroMaterials { assets.materials }
     private let ground = GroundTiles()
     private let sceneryRoot = SCNNode()
     private let trainRoot = SCNNode()
@@ -82,6 +81,7 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         var followedID: String
         var mode: RideCamera = .follow
         var modeChanged = false
+        // Orbit targets set by gestures; the render loop eases toward them.
         var yawOffset: Float = 0.75
         var pitch: Float = 0.30
         var distance: Float = 70
@@ -106,20 +106,22 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
     private var trainNodes: [String: [SCNNode]] = [:]
     private var lastTime: TimeInterval = 0
     private var smoothedYaw: Float?
+    private var orbit: (yaw: Float, pitch: Float, distance: Float)?
     private var eye = SIMD3<Double>(0, 0, 0)
     private var target = SIMD3<Double>(0, 0, 0)
     private var transition: (eye: SIMD3<Double>, target: SIMD3<Double>, t: Double, duration: Double)?
     private var tracksideAnchor: Double?
     private var boardCache: [String: SCNNode] = [:]
 
-    init(feed: TrainFeed, trainID: String, entry: RideEntry? = nil) {
+    init(feed: TrainFeed, trainID: String, entry: RideEntry? = nil, camera: RideCamera = .follow,
+         onReady: (() -> Void)? = nil) {
         self.feed = feed
-        shared = Shared(followedID: trainID, entry: entry)
+        self.onReady = onReady
+        _camera = Published(initialValue: camera)
+        shared = Shared(followedID: trainID, mode: camera, entry: entry)
         super.init()
-        for line in MetroNetwork.lines {
-            factories[line.id] = TrainFactory(lineColor: Livery.color(for: line.id), library: materials)
-            sceneries.append(LineScenery(line: line, materials: materials))
-        }
+        // Shared materials may carry x-ray state from a previous ride.
+        materials.tunnel.transparency = 1
         shared.followed = feed.trains(at: Date()).first { $0.id == trainID }
         buildScene()
     }
@@ -143,6 +145,8 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         cam.screenSpaceAmbientOcclusionRadius = 1.6
         cam.screenSpaceAmbientOcclusionNormalThreshold = 0.3
         cam.screenSpaceAmbientOcclusionDepthThreshold = 0.6
+        cam.saturation = 1.08
+        cam.contrast = 0.06
         cam.vignettingIntensity = 0.25
         cam.vignettingPower = 1.2
         cameraNode.camera = cam
@@ -153,7 +157,7 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         sun.castsShadow = true
         sun.shadowMapSize = CGSize(width: 2048, height: 2048)
         sun.shadowCascadeCount = 3
-        sun.maximumShadowDistance = 400
+        sun.maximumShadowDistance = 320
         sun.shadowCascadeSplittingFactor = 0.25
         sun.automaticallyAdjustsShadowProjection = true
         sun.shadowSampleCount = 8
@@ -189,9 +193,9 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         scene.rootNode.addChildNode(ground.root)
         scene.rootNode.addChildNode(sceneryRoot)
         scene.rootNode.addChildNode(trainRoot)
-        scene.fogStartDistance = 1400
-        scene.fogEndDistance = 5200
-        scene.fogDensityExponent = 1.4
+        scene.fogStartDistance = 2200
+        scene.fogEndDistance = 6800
+        scene.fogDensityExponent = 1.3
         updateSky(force: true)
 
         if let t = shared.followed, let track = MetroNetwork.tracks[t.lineID] {
@@ -211,7 +215,7 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         streamScenery(focus: focus, initial: false)
         ground.update(focus: focus)
         updateSky(force: false)
-        if !announcedReady, ground.loadedTileCount >= 6, loadedChunks.count >= 3 {
+        if !announcedReady, ground.nearGroundLoaded, loadedChunks.count >= 3 {
             announcedReady = true
             onReady?()
         }
@@ -223,6 +227,9 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
             SCNTransaction.begin()
             SCNTransaction.animationDuration = 0.8
             materials.tunnel.transparency = wantXray ? 0.16 : 1
+            for chunk in loadedChunks.values {
+                chunk.childNodes(passingTest: { n, _ in n.name == "buildings" }).forEach { $0.opacity = wantXray ? 0.12 : 1 }
+            }
             SCNTransaction.commit()
         }
         ground.setAppearance(brightness: CGFloat(1 - 0.6 * sky.night), opacity: xray ? 0.14 : 1)
@@ -237,21 +244,32 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
             }
             SCNTransaction.commit()
         }
+        soundEvents(s)
         refreshHUD()
     }
 
     private func updateSky(force: Bool) {
         guard force || Date().timeIntervalSince(lastSkyUpdate) > 60 else { return }
         lastSkyUpdate = Date()
-        let sky = SkyState(date: Self.skyDate())
-        let image = sky.skyImage()
-        scene.background.contents = image
-        scene.lightingEnvironment.contents = image
+        let date = Self.skyDate()
+        let sky = SkyState(date: date)
+        if let image = assets.cachedSky(for: date) {
+            scene.background.contents = image
+            scene.lightingEnvironment.contents = image
+        } else {
+            DispatchQueue.global(qos: .userInitiated).async { [weak self, assets] in
+                let image = assets.skyImage(for: sky, date: date)
+                DispatchQueue.main.async {
+                    self?.scene.background.contents = image
+                    self?.scene.lightingEnvironment.contents = image
+                }
+            }
+        }
         scene.lightingEnvironment.intensity = CGFloat(1.4 - 1.15 * sky.night)
         scene.fogColor = sky.horizonColor
 
         let up = max(Float(sin(sky.sunElevation)), 0)
-        sunNode.light?.intensity = CGFloat(2600 * min(up / 0.25, 1))
+        sunNode.light?.intensity = CGFloat(2100 * min(up / 0.25, 1))
         sunNode.light?.color = sky.sunUIColor
         sunNode.light?.castsShadow = up > 0.02
         sunNode.simdOrientation = Self.lookRotation(forward: -sky.sunDirection)
@@ -259,7 +277,7 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         moonNode.light?.intensity = CGFloat(420 * sky.night)
         ambientNode.light?.intensity = CGFloat(260 * sky.night)
         // Let the eye adapt a little after dark.
-        cameraNode.camera?.exposureOffset = CGFloat(-0.2 + 1.1 * sky.night)
+        cameraNode.camera?.exposureOffset = CGFloat(-0.35 + 1.2 * sky.night)
         materials.setNight(CGFloat(sky.night))
     }
 
@@ -267,7 +285,7 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
     private func streamScenery(focus: SIMD2<Double>, initial: Bool) {
         let near = 2700.0, far = 3600.0
         var wanted: [(key: String, scenery: LineScenery, chunk: Int, distance: Double)] = []
-        for scenery in sceneries {
+        for scenery in assets.sceneries {
             for c in 0..<scenery.chunkCount {
                 let key = "\(scenery.line.id)-\(c)"
                 let d = simd_distance(scenery.chunkCenter(c), focus)
@@ -281,19 +299,50 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         }
         for w in wanted.sorted(by: { $0.distance < $1.distance }) {
             buildingChunks.insert(w.key)
-            buildQueue.async { [weak self] in
-                let node = w.scenery.makeChunk(w.chunk)
+            buildQueue.async { [weak self, assets] in
+                let node = assets.chunk(w.scenery, w.chunk)
                 DispatchQueue.main.async {
                     guard let self else { return }
                     self.buildingChunks.remove(w.key)
-                    if self.roofXray {
-                        node.childNodes(passingTest: { n, _ in n.name == "stationRoof" }).forEach { $0.opacity = 0.15 }
-                    }
+                    // Cached chunks may come from an earlier ride with roofs faded.
+                    let roofOpacity: CGFloat = self.roofXray ? 0.15 : 1
+                    node.childNodes(passingTest: { n, _ in n.name == "stationRoof" }).forEach { $0.opacity = roofOpacity }
+                    let buildingOpacity: CGFloat = self.xray ? 0.12 : 1
+                    node.childNodes(passingTest: { n, _ in n.name == "buildings" }).forEach { $0.opacity = buildingOpacity }
                     self.sceneryRoot.addChildNode(node)
                     self.loadedChunks[w.key] = node
                 }
             }
         }
+    }
+
+    // MARK: Sound events
+
+    private var lastStatus: (trip: String, status: Train.Status, station: String)?
+    private var beepedFor: String?
+
+    /// Chime on arrival, door beeps before departure, next-station call after leaving.
+    private func soundEvents(_ s: Shared) {
+        guard let t = s.followed, !s.terminated else { return }
+        let stops = feed.stops(ofTrip: t.id)
+        if let last = lastStatus, last.trip == t.id {
+            if last.status == .moving, t.status == .atStation {
+                MetroAudio.shared.arrived(at: t.nextStationID)
+            } else if last.status == .atStation, t.status == .moving {
+                MetroAudio.shared.announceNext(stationID: t.nextStationID, lineID: t.lineID,
+                                               isLast: stops.last?.stationID == t.nextStationID)
+            }
+        }
+        if t.status == .atStation, let stop = stops.first(where: { $0.stationID == t.nextStationID }),
+           stop.stationID != stops.last?.stationID {
+            let key = "\(t.id)-\(stop.stationID)"
+            let left = stop.depart.timeIntervalSinceNow
+            if beepedFor != key, left < 10, left > 0 {
+                beepedFor = key
+                MetroAudio.shared.departing()
+            }
+        }
+        lastStatus = (t.id, t.status, t.nextStationID)
     }
 
     // MARK: HUD
@@ -359,6 +408,11 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         }
     }
 
+    /// Carries a flick on after the finger lifts.
+    func fling(velocity: CGPoint) {
+        orbit(by: CGPoint(x: velocity.x * 0.16, y: velocity.y * 0.12))
+    }
+
     func zoom(by scale: CGFloat) {
         withShared { $0.distance = min(max($0.distance / Float(scale), 16), 900) }
     }
@@ -416,7 +470,7 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
             // Start exactly where the map camera is; the initial mode isn't a switch to animate.
             let pose = e.pose
             if s.entryGo {
-                transition = (pose.eye, pose.target, 0, 2.4)
+                transition = (pose.eye, pose.target, 0, 2.6)
                 withShared { $0.entry = nil; $0.entryGo = false; $0.modeChanged = false }
             } else {
                 eye = pose.eye
@@ -428,7 +482,7 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
             s.modeChanged = false
         }
         if s.modeChanged {
-            transition = (eye, target, 0, 1.1)
+            transition = (eye, target, 0, 1.3)
             tracksideAnchor = nil
             withShared { $0.modeChanged = false }
             s.modeChanged = false
@@ -439,8 +493,15 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         case .follow:
             let headingYaw = Float(atan2(forward.x, forward.z))
             smoothedYaw = smoothedYaw.map { Self.angleLerp($0, headingYaw, Float(1 - exp(-dt * 1.6))) } ?? headingYaw
-            let az = Double(smoothedYaw! + .pi + s.yawOffset)
-            let pitch = Double(s.pitch), dist = Double(s.distance)
+            // Ease the orbit toward the gesture targets so drags and pinches glide.
+            let ease = Float(1 - exp(-dt * 9))
+            var o = orbit ?? (s.yawOffset, s.pitch, s.distance)
+            o.yaw = Self.angleLerp(o.yaw, s.yawOffset, ease)
+            o.pitch += (s.pitch - o.pitch) * ease
+            o.distance = exp(log(o.distance) + (log(s.distance) - log(o.distance)) * ease)
+            orbit = o
+            let az = Double(smoothedYaw! + .pi + o.yaw)
+            let pitch = Double(o.pitch), dist = Double(o.distance)
             desiredTarget = center + forward * 16 + SIMD3(0, 2.2, 0)
             desiredEye = desiredTarget + SIMD3(sin(az) * cos(pitch), sin(pitch), cos(az) * cos(pitch)) * dist
             cameraNode.camera?.zNear = 0.5
@@ -451,7 +512,10 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         case .trackside:
             // Re-place the camera ahead once the train has passed it (or it's too far ahead).
             if tracksideAnchor.map({ sign * (f.distance - $0) > 75 || sign * ($0 - f.distance) > 700 }) ?? true {
-                tracksideAnchor = f.distance + sign * 340
+                var a = f.distance + sign * 340
+                // Never park the camera inside a station's structure.
+                while track.stationDistances.contains(where: { abs($0 - a) < 110 }) { a += sign * 60 }
+                tracksideAnchor = a
             }
             let a = tracksideAnchor!
             let side = lateral < 0 ? -1.0 : 1.0
@@ -466,10 +530,9 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         if holdingEntry {
             // eye/target already hold the map pose.
         } else if var tr = transition {
-            tr.t += dt / tr.duration
-            let k = tr.t >= 1 ? 1 : tr.t * tr.t * (3 - 2 * tr.t)
-            eye = simd_mix(tr.eye, desiredEye, SIMD3(repeating: k))
-            target = simd_mix(tr.target, desiredTarget, SIMD3(repeating: k))
+            tr.t = min(tr.t + dt / tr.duration, 1)
+            let k = tr.t * tr.t * tr.t * (tr.t * (tr.t * 6 - 15) + 10)   // smootherstep
+            (eye, target) = Self.blend(from: (tr.eye, tr.target), to: (desiredEye, desiredTarget), k)
             transition = tr.t >= 1 ? nil : tr
         } else {
             eye = desiredEye
@@ -480,6 +543,9 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
 
         headlamp.simdPosition = SIMD3<Float>(head + SIMD3(0, 1.7, 0))
         headlamp.simdOrientation = Self.lookRotation(forward: SIMD3<Float>(simd_normalize(forward + SIMD3(0, -0.08, 0))))
+
+        MetroAudio.shared.update(speed: terminated ? 0 : f.speed, underground: deck < -2,
+                                 cameraDistance: simd_distance(eye, center))
 
         let nearStation = track.stationDistances.contains { abs($0 - f.distance) < 90 }
         withShared {
@@ -492,7 +558,7 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
     }
 
     private func makeTrain(_ t: Train) -> [SCNNode] {
-        guard let factory = factories[t.lineID] else { return [] }
+        guard let factory = assets.factories[t.lineID] else { return [] }
         let cars = factory.makeTrain(destination: t.destinationName)
         cars.forEach(trainRoot.addChildNode)
         trainNodes[t.id] = cars
@@ -512,6 +578,9 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
             let fwd = simd_normalize(front - rear)
             let yaw = Float(atan2(fwd.x, fwd.z)), pitch = Float(asin(fwd.y))
             var q = simd_quatf(angle: yaw, axis: [0, 1, 0]) * simd_quatf(angle: -pitch, axis: [1, 0, 0])
+            // A whisper of body roll that grows with speed.
+            let sway = Float(0.0045 * sin(sc / 21 + Double(i) * 1.7) * min(t.speed / 17, 1))
+            q = q * simd_quatf(angle: sway, axis: [0, 0, 1])
             if i == cars.count - 1 { q = q * simd_quatf(angle: .pi, axis: [0, 1, 0]) }
             car.simdPosition = SIMD3<Float>((front + rear) / 2)
             car.simdOrientation = q
@@ -541,6 +610,22 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         x = simd_normalize(x)
         let y = simd_cross(z, x)
         return simd_quatf(simd_float3x3(x, y, z))
+    }
+
+    /// Interpolates two camera poses around their look-at points: the look-at point
+    /// moves straight, while distance (log scale), elevation and bearing ease
+    /// separately, so the camera swings and zooms in an arc instead of cutting across.
+    static func blend(from a: (eye: SIMD3<Double>, target: SIMD3<Double>),
+                      to b: (eye: SIMD3<Double>, target: SIMD3<Double>), _ k: Double)
+        -> (eye: SIMD3<Double>, target: SIMD3<Double>) {
+        let target = simd_mix(a.target, b.target, SIMD3(repeating: k))
+        let oa = a.eye - a.target, ob = b.eye - b.target
+        let da = max(simd_length(oa), 0.01), db = max(simd_length(ob), 0.01)
+        let d = exp(log(da) + (log(db) - log(da)) * k)
+        let pa = asin(min(max(oa.y / da, -1), 1)), pb = asin(min(max(ob.y / db, -1), 1))
+        let p = pa + (pb - pa) * k
+        let y = Double(angleLerp(Float(atan2(oa.x, oa.z)), Float(atan2(ob.x, ob.z)), Float(k)))
+        return (target + SIMD3(sin(y) * cos(p), sin(p), cos(y) * cos(p)) * d, target)
     }
 
     static func angleLerp(_ a: Float, _ b: Float, _ t: Float) -> Float {

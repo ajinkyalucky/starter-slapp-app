@@ -59,9 +59,9 @@ final class LineScenery {
 
     // MARK: Chunk
 
-    private enum Slot: Int, CaseIterable { case concrete, concreteDark, rail, thirdRail }
+    private enum Slot: Int, CaseIterable { case concrete, concreteDark, rail, thirdRail, lampPost, lamp }
     private var trackMaterials: [SCNMaterial] {
-        [materials.concrete, materials.concreteDark, materials.rail, materials.thirdRail]
+        [materials.concrete, materials.concreteDark, materials.rail, materials.thirdRail, materials.lampPost, materials.lamp]
     }
 
     private static let deckProfile = Profile([
@@ -98,7 +98,7 @@ final class LineScenery {
             let center = side * Float(TrackLayout.trackOffset)
             for rail: Float in [-1, 1] {
                 let x = center + rail * CarSpec.gauge / 2
-                mesh.sweep(.rect(x: (x - 0.3)...(x + 0.3), y: 0...0.25, slot: Slot.concreteDark.rawValue), frames: frames)
+                mesh.sweep(.rect(x: (x - 0.24)...(x + 0.24), y: 0...0.25, slot: Slot.concreteDark.rawValue), frames: frames)
                 mesh.sweep(Self.railProfile(at: x), frames: frames, uvScale: 1)
             }
             let third = center + side * 1.55
@@ -122,6 +122,19 @@ final class LineScenery {
             mesh.prism(Slot.concrete.rawValue, footprint: octagon, bottom: 0, top: d - 3.3, at: ground, rotation: rotation)
             mesh.box(Slot.concrete.rawValue, center: ground + [0, d - 2.75, 0], half: [2.9, 0.55, 1.1],
                      axes: (f.right, [0, 1, 0], along))
+        }
+        // Lamp posts on the parapets, alternating sides every 32 m (they glow at night).
+        for i in range where i % 4 == 2 && i < range.upperBound {
+            let d = Float(track.deck[i])
+            guard d > 1 else { continue }
+            let f = frames[i - range.lowerBound]
+            let along = simd_cross(f.right, [0, 1, 0]) * -1
+            let side: Float = (i / 4) % 2 == 0 ? 1 : -1
+            let foot = f.origin + f.right * (side * 4.47) + [0, 1.1, 0]
+            let axes = (f.right, SIMD3<Float>(0, 1, 0), along)
+            mesh.box(Slot.lampPost.rawValue, center: foot + [0, 2.6, 0], half: [0.06, 2.6, 0.06], axes: axes)
+            mesh.box(Slot.lampPost.rawValue, center: foot + [0, 5.15, 0] - f.right * (side * 0.55), half: [0.6, 0.05, 0.08], axes: axes)
+            mesh.box(Slot.lamp.rawValue, center: foot + [0, 5.07, 0] - f.right * (side * 1.0), half: [0.22, 0.04, 0.12], axes: axes)
         }
         // Retaining walls where a ramp runs close to the ground.
         for i in range where i < range.upperBound {
@@ -153,6 +166,11 @@ final class LineScenery {
             let n = SCNNode(geometry: g)
             n.name = "tunnel"
             node.addChildNode(n)
+        }
+
+        if let buildings = CityBuildings.byChunk["\(line.id)-\(c)"],
+           let b = CityBuildings.node(for: buildings, origin: base, materials: materials) {
+            node.addChildNode(b)
         }
 
         for (k, s) in stations.enumerated() where s >= track.cumulative[range.lowerBound] && s < track.cumulative[range.upperBound] {

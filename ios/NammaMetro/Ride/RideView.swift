@@ -14,12 +14,10 @@ struct RideView: View {
          started: Bool = true, onReady: (() -> Void)? = nil, onClose: @escaping () -> Void) {
         self.entry = entry
         self.started = started
-        let c = RideSceneController(feed: feed, trainID: trainID, entry: entry)
-        c.camera = camera
-        c.onReady = onReady
-        if started, let entry { c.startEntry(entry) }
-        _controller = StateObject(wrappedValue: c)
         self.onClose = onClose
+        // StateObject's autoclosure runs once; SwiftUI re-creates this view often.
+        _controller = StateObject(wrappedValue: RideSceneController(
+            feed: feed, trainID: trainID, entry: entry, camera: camera, onReady: onReady))
     }
 
     var body: some View {
@@ -35,9 +33,17 @@ struct RideView: View {
             .padding(.vertical, 8)
         }
         .environment(\.colorScheme, .dark)
-        .onChange(of: started) { _, go in
-            if go, let entry { controller.startEntry(entry) }
+        .onAppear {
+            guard started else { return }
+            if let entry { controller.startEntry(entry) }
+            MetroAudio.shared.start(context: .ride)
         }
+        .onChange(of: started) { _, go in
+            guard go else { return }
+            if let entry { controller.startEntry(entry) }
+            MetroAudio.shared.start(context: .ride)
+        }
+        .onDisappear { MetroAudio.shared.stop() }
     }
 
     private var lineColor: Color {
@@ -64,6 +70,10 @@ struct RideView: View {
             .frame(height: 38)
             .background(.ultraThinMaterial, in: Capsule())
             Spacer(minLength: 0)
+            SoundMenu()
+                .font(.system(size: 15, weight: .semibold))
+                .frame(width: 38, height: 38)
+                .background(.ultraThinMaterial, in: Circle())
         }
         .foregroundStyle(.white)
     }
@@ -146,6 +156,7 @@ struct RideSceneView: UIViewRepresentable {
         @objc func pan(_ g: UIPanGestureRecognizer) {
             controller.orbit(by: g.translation(in: g.view))
             g.setTranslation(.zero, in: g.view)
+            if g.state == .ended { controller.fling(velocity: g.velocity(in: g.view)) }
         }
 
         @objc func pinch(_ g: UIPinchGestureRecognizer) {
