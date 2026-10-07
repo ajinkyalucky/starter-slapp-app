@@ -13,36 +13,55 @@ struct MapScreen: View {
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 2)) { context in
-            let trains = feed.trains(at: context.date).filter { !hiddenLines.contains($0.lineID) }
-            Map(position: $camera) {
-                ForEach(MetroNetwork.lines.filter { !hiddenLines.contains($0.id) }) { line in
-                    MapPolyline(coordinates: line.coordinates)
-                        .stroke(line.color, lineWidth: 4)
-                    ForEach(line.stations) { station in
-                        Annotation(station.name, coordinate: station.coordinate) {
-                            Button { selectedStation = station } label: {
-                                Circle()
-                                    .fill(.white)
-                                    .overlay(Circle().stroke(line.color, lineWidth: 2))
-                                    .frame(width: 10, height: 10)
-                            }
-                        }
-                    }
-                }
-                ForEach(trains) { train in
-                    Annotation("", coordinate: train.coordinate) {
-                        TrainMarker(train: train)
-                    }
-                }
-            }
-            .annotationTitles(.hidden)
-            .overlay(alignment: .top) { header(trainCount: trains.count) }
+            liveMap(at: context.date)
         }
         .overlay(alignment: .bottom) { legend }
         .sheet(item: $selectedStation) { station in
             NavigationStack { StationDetailView(feed: feed, station: station) }
                 .presentationDetents([.medium, .large])
         }
+    }
+
+    private var visibleLines: [MetroLine] {
+        MetroNetwork.lines.filter { !hiddenLines.contains($0.id) }
+    }
+
+    private func liveMap(at date: Date) -> some View {
+        let trains: [Train] = feed.trains(at: date).filter { !hiddenLines.contains($0.lineID) }
+        return Map(position: $camera) {
+            ForEach(visibleLines) { line in
+                lineContent(line)
+            }
+            ForEach(trains) { train in
+                Annotation("", coordinate: train.coordinate) {
+                    TrainMarker(train: train)
+                }
+            }
+        }
+        .overlay(alignment: .top) { header(trainCount: trains.count) }
+    }
+
+    @MapContentBuilder
+    private func lineContent(_ line: MetroLine) -> some MapContent {
+        MapPolyline(coordinates: line.coordinates)
+            .stroke(line.color, lineWidth: 4)
+        ForEach(line.stations) { station in
+            Annotation("", coordinate: station.coordinate) {
+                stationDot(station, color: line.color)
+            }
+        }
+    }
+
+    private func stationDot(_ station: Station, color: Color) -> some View {
+        Button {
+            selectedStation = station
+        } label: {
+            Circle()
+                .fill(Color.white)
+                .overlay(Circle().stroke(color, lineWidth: 2))
+                .frame(width: 10, height: 10)
+        }
+        .accessibilityLabel(station.name)
     }
 
     private func header(trainCount: Int) -> some View {
