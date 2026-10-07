@@ -33,6 +33,8 @@ final class GroundTiles {
         root.addChildNode(base)
     }
 
+    var loadedTileCount: Int { tiles.count }
+
     /// Call on the main thread whenever the focus moves noticeably.
     func update(focus: SIMD2<Double>) {
         let ci = Int(floor(focus.x / tileMeters)), cj = Int(floor(focus.y / tileMeters))

@@ -1,4 +1,5 @@
 import Combine
+import CoreLocation
 import SceneKit
 import simd
 import UIKit
@@ -6,6 +7,29 @@ import UIKit
 enum RideCamera: String, CaseIterable, Identifiable {
     case follow = "Follow", front = "Front", trackside = "Trackside"
     var id: String { rawValue }
+}
+
+/// The map camera the 3D view takes over from: the scene's camera holds the same
+/// pose until `startEntry`, then glides down to the ride camera.
+struct RideEntry: Equatable {
+    var center: CLLocationCoordinate2D
+    var distance: Double   // metres from the camera to the point it looks at
+    var heading: Double    // degrees clockwise from north
+    var pitch: Double      // degrees from straight down
+
+    static func == (a: RideEntry, b: RideEntry) -> Bool {
+        a.center.latitude == b.center.latitude && a.center.longitude == b.center.longitude
+            && a.distance == b.distance && a.heading == b.heading && a.pitch == b.pitch
+    }
+
+    /// Camera position and look-at point in scene space.
+    var pose: (eye: SIMD3<Double>, target: SIMD3<Double>) {
+        let h = heading * .pi / 180, p = pitch * .pi / 180
+        let c = MetroWorld.project(center)
+        let look = SIMD3(c.x, 0, c.y)
+        let ahead = SIMD3(sin(h), 0, -cos(h))
+        return (look + SIMD3(0, distance * cos(p), 0) - ahead * distance * sin(p), look)
+    }
 }
 
 struct RideHUD: Equatable {
@@ -30,6 +54,9 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
     let scene = SCNScene()
     let cameraNode = SCNNode()
     let feed: TrainFeed
+    /// Called once on the main thread when nearby ground and track have loaded.
+    var onReady: (() -> Void)?
+    private var announcedReady = false
 
     private let materials = MetroMaterials()
     private var factories: [String: TrainFactory] = [:]
@@ -63,6 +90,9 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         var focus = SIMD3<Double>(0, 0, 0)
         var underground = false
         var cameraAboveStationRoof = false
+        /// While set, the camera holds this map pose; `entryGo` starts the glide.
+        var entry: RideEntry?
+        var entryGo = false
     }
     private let lock = NSLock()
     private var shared: Shared
@@ -78,13 +108,13 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
     private var smoothedYaw: Float?
     private var eye = SIMD3<Double>(0, 0, 0)
     private var target = SIMD3<Double>(0, 0, 0)
-    private var transition: (eye: SIMD3<Double>, target: SIMD3<Double>, t: Double)?
+    private var transition: (eye: SIMD3<Double>, target: SIMD3<Double>, t: Double, duration: Double)?
     private var tracksideAnchor: Double?
     private var boardCache: [String: SCNNode] = [:]
 
-    init(feed: TrainFeed, trainID: String) {
+    init(feed: TrainFeed, trainID: String, entry: RideEntry? = nil) {
         self.feed = feed
-        shared = Shared(followedID: trainID)
+        shared = Shared(followedID: trainID, entry: entry)
         super.init()
         for line in MetroNetwork.lines {
             factories[line.id] = TrainFactory(lineColor: Livery.color(for: line.id), library: materials)
@@ -171,7 +201,7 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
             ground.update(focus: focus)
         }
         refreshHUD()
-        timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in self?.tick() }
+        timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in self?.tick() }
     }
 
     /// Main-thread housekeeping: streaming, lighting, HUD.
@@ -181,6 +211,10 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         streamScenery(focus: focus, initial: false)
         ground.update(focus: focus)
         updateSky(force: false)
+        if !announcedReady, ground.loadedTileCount >= 6, loadedChunks.count >= 3 {
+            announcedReady = true
+            onReady?()
+        }
 
         let sky = SkyState(date: Self.skyDate())
         let wantXray = s.underground
@@ -196,7 +230,11 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
             roofXray = s.cameraAboveStationRoof
             SCNTransaction.begin()
             SCNTransaction.animationDuration = 0.6
-            materials.stationRoof.transparency = roofXray ? 0.18 : 1
+            for chunk in loadedChunks.values {
+                for roof in chunk.childNodes(passingTest: { n, _ in n.name == "stationRoof" }) {
+                    roof.opacity = roofXray ? 0.15 : 1
+                }
+            }
             SCNTransaction.commit()
         }
         refreshHUD()
@@ -248,6 +286,9 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
                 DispatchQueue.main.async {
                     guard let self else { return }
                     self.buildingChunks.remove(w.key)
+                    if self.roofXray {
+                        node.childNodes(passingTest: { n, _ in n.name == "stationRoof" }).forEach { $0.opacity = 0.15 }
+                    }
                     self.sceneryRoot.addChildNode(node)
                     self.loadedChunks[w.key] = node
                 }
@@ -299,6 +340,14 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
             $0.modeChanged = true
         }
         refreshHUD()
+    }
+
+    /// Starts the glide from `entry` (the map's actual final camera) down to the train.
+    func startEntry(_ entry: RideEntry) {
+        withShared {
+            $0.entry = entry
+            $0.entryGo = true
+        }
     }
 
     // MARK: Gestures (main thread)
@@ -362,8 +411,24 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         let half = Double(CarSpec.trainLength) / 2
         let head = track.railPoint(at: f.distance + sign * (half + 0.6), lateral: lateral)
 
+        var holdingEntry = false
+        if let e = s.entry {
+            // Start exactly where the map camera is; the initial mode isn't a switch to animate.
+            let pose = e.pose
+            if s.entryGo {
+                transition = (pose.eye, pose.target, 0, 2.4)
+                withShared { $0.entry = nil; $0.entryGo = false; $0.modeChanged = false }
+            } else {
+                eye = pose.eye
+                target = pose.target
+                transition = nil
+                holdingEntry = true
+                withShared { $0.modeChanged = false }
+            }
+            s.modeChanged = false
+        }
         if s.modeChanged {
-            transition = (eye, target, 0)
+            transition = (eye, target, 0, 1.1)
             tracksideAnchor = nil
             withShared { $0.modeChanged = false }
             s.modeChanged = false
@@ -398,8 +463,10 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
             cameraNode.camera?.zNear = 0.3
         }
 
-        if var tr = transition {
-            tr.t += dt / 1.1
+        if holdingEntry {
+            // eye/target already hold the map pose.
+        } else if var tr = transition {
+            tr.t += dt / tr.duration
             let k = tr.t >= 1 ? 1 : tr.t * tr.t * (3 - 2 * tr.t)
             eye = simd_mix(tr.eye, desiredEye, SIMD3(repeating: k))
             target = simd_mix(tr.target, desiredTarget, SIMD3(repeating: k))

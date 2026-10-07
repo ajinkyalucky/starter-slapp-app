@@ -4,12 +4,22 @@ import SwiftUI
 /// Full-screen 3D view riding along with one train on its real route.
 struct RideView: View {
     @StateObject private var controller: RideSceneController
-    @Environment(\.dismiss) private var dismiss
+    private let onClose: () -> Void
 
-    init(feed: TrainFeed, trainID: String, camera: RideCamera = .follow) {
-        let c = RideSceneController(feed: feed, trainID: trainID)
+    private let entry: RideEntry?
+    private let started: Bool
+
+    /// With an `entry`, the camera holds the map's pose until `started` turns true.
+    init(feed: TrainFeed, trainID: String, camera: RideCamera = .follow, entry: RideEntry? = nil,
+         started: Bool = true, onReady: (() -> Void)? = nil, onClose: @escaping () -> Void) {
+        self.entry = entry
+        self.started = started
+        let c = RideSceneController(feed: feed, trainID: trainID, entry: entry)
         c.camera = camera
+        c.onReady = onReady
+        if started, let entry { c.startEntry(entry) }
         _controller = StateObject(wrappedValue: c)
+        self.onClose = onClose
     }
 
     var body: some View {
@@ -24,8 +34,10 @@ struct RideView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
-        .statusBarHidden(false)
-        .preferredColorScheme(.dark)
+        .environment(\.colorScheme, .dark)
+        .onChange(of: started) { _, go in
+            if go, let entry { controller.startEntry(entry) }
+        }
     }
 
     private var lineColor: Color {
@@ -34,7 +46,7 @@ struct RideView: View {
 
     private var topBar: some View {
         HStack(spacing: 10) {
-            Button { dismiss() } label: {
+            Button(action: onClose) {
                 Image(systemName: "xmark")
                     .font(.system(size: 15, weight: .semibold))
                     .frame(width: 38, height: 38)

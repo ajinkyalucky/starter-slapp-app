@@ -18,7 +18,9 @@ struct NammaMetroApp: App {
         _tracker = State(initialValue: TripTracker(feed: feed, base: base, calibration: calibration))
         #if DEBUG
         // `-autoRide <lineID>` (see MapScreen) needs the map tab up front.
-        if UserDefaults.standard.string(forKey: "autoRide") != nil { _tab = State(initialValue: .map) }
+        if UserDefaults.standard.string(forKey: "autoRide") != nil || UserDefaults.standard.bool(forKey: "openMap") {
+            _tab = State(initialValue: .map)
+        }
         #endif
     }
 
