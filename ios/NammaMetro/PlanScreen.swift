@@ -289,7 +289,7 @@ struct AccuracyNote: View {
         }
         .font(.footnote)
         .foregroundStyle(.secondary)
-        Text(Timetable.bundled.attribution)
+        Text("Unofficial app, not affiliated with BMRCL. \(Timetable.bundled.attribution)")
             .font(.caption2)
             .foregroundStyle(.tertiary)
     }
@@ -344,7 +344,7 @@ struct StationPicker: View {
                                     }
                                 }
                             } else {
-                                Label(nearest.denied ? "Location is off for Namma Metro" : "Nearest station",
+                                Label(nearest.denied ? "Location is off for Metro Buddy" : "Nearest station",
                                       systemImage: "location")
                             }
                         }

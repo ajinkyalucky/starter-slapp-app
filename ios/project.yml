@@ -18,7 +18,12 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.ajinkya.nammametro
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Namma Metro
+        INFOPLIST_KEY_CFBundleDisplayName: Metro Buddy
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.navigation
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_ENTITLEMENTS: NammaMetro/NammaMetro.entitlements
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Finds your nearest station, and while a trip is on, uses the stations you stop at to correct train times."
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
@@ -31,6 +36,15 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
+  NammaMetroUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [NammaMetroUITests]
+    dependencies:
+      - target: NammaMetro
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   NammaMetro:
     build:
@@ -38,3 +52,10 @@ schemes:
         NammaMetro: all
     test:
       targets: [NammaMetroTests]
+  Demo:
+    build:
+      targets:
+        NammaMetro: all
+        NammaMetroUITests: [test]
+    test:
+      targets: [NammaMetroUITests]
