@@ -113,20 +113,30 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
     private var tracksideAnchor: Double?
     private var boardCache: [String: SCNNode] = [:]
 
-    init(feed: TrainFeed, trainID: String, entry: RideEntry? = nil, camera: RideCamera = .follow,
+    init(feed: TrainFeed, train: Train, entry: RideEntry? = nil, camera: RideCamera = .follow,
          onReady: (() -> Void)? = nil) {
         self.feed = feed
         self.onReady = onReady
         _camera = Published(initialValue: camera)
-        shared = Shared(followedID: trainID, mode: camera, entry: entry)
+        shared = Shared(followedID: train.id, mode: camera, entry: entry)
         super.init()
         // Shared materials may carry x-ray state from a previous ride.
         materials.tunnel.transparency = 1
-        shared.followed = feed.trains(at: Date()).first { $0.id == trainID }
+        // The tapped train stands in if its trip ends in the moment between tap and now.
+        shared.followed = feed.trains(at: Date()).first { $0.id == train.id } ?? train
+        let t0 = CACurrentMediaTime()
         buildScene()
+        PerfMonitor.mark("ride init \(String(format: "%.0f", (CACurrentMediaTime() - t0) * 1000))ms")
     }
 
     deinit { timer?.invalidate() }
+
+    /// Stops the main-thread timer and callbacks. Call on the main thread when the view goes away.
+    func shutdown() {
+        timer?.invalidate()
+        timer = nil
+        onReady = nil
+    }
 
     // MARK: Setup
 
@@ -201,6 +211,8 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         if let t = shared.followed, let track = MetroNetwork.tracks[t.lineID] {
             let p = track.point(at: t.distance)
             let focus = SIMD2(p.x, p.y)
+            // Seed the focus so the first ticks stream around the train, not the origin.
+            shared.focus = SIMD3(p.x, track.deckHeight(at: t.distance), p.y)
             streamScenery(focus: focus, initial: true)
             ground.update(focus: focus)
         }
@@ -217,6 +229,7 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         updateSky(force: false)
         if !announcedReady, ground.nearGroundLoaded, loadedChunks.count >= 3 {
             announcedReady = true
+            PerfMonitor.mark("ride ready")
             onReady?()
         }
 
@@ -427,7 +440,11 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
 
     // MARK: Render loop
 
+    private let perf = PerfMonitor("ride")
+
     func renderer(_ renderer: SCNSceneRenderer, updateAtTime time: TimeInterval) {
+        let workStart = CACurrentMediaTime()
+        defer { perf.frame(work: CACurrentMediaTime() - workStart) }
         let dt = lastTime == 0 ? 1.0 / 60 : min(time - lastTime, 0.1)
         lastTime = time
         let now = Date()
@@ -442,7 +459,7 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         let fp = track.point(at: f.distance)
         let focus2 = SIMD2(fp.x, fp.y)
         var placed = Set<String>()
-        var visible = trains.filter { simd_distance($0.coordinateIn(MetroNetwork.tracks[$0.lineID]), focus2) < 3200 }
+        var visible = trains.filter { simd_distance($0.coordinateIn(MetroNetwork.tracks[$0.lineID]), focus2) < 1800 }
         if terminated { visible.append(f) }
         for t in visible {
             guard let tr = MetroNetwork.tracks[t.lineID] else { continue }
@@ -504,11 +521,11 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
             let pitch = Double(o.pitch), dist = Double(o.distance)
             desiredTarget = center + forward * 16 + SIMD3(0, 2.2, 0)
             desiredEye = desiredTarget + SIMD3(sin(az) * cos(pitch), sin(pitch), cos(az) * cos(pitch)) * dist
-            cameraNode.camera?.zNear = 0.5
+            setZNear(0.5)
         case .front:
             desiredEye = head + SIMD3(0, 2.9, 0) + forward * 0.4
             desiredTarget = track.railPoint(at: f.distance + sign * (half + 90), lateral: lateral) + SIMD3(0, 1.4, 0)
-            cameraNode.camera?.zNear = 0.1
+            setZNear(0.1)
         case .trackside:
             // Re-place the camera ahead once the train has passed it (or it's too far ahead).
             if tracksideAnchor.map({ sign * (f.distance - $0) > 75 || sign * ($0 - f.distance) > 700 }) ?? true {
@@ -524,7 +541,7 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
             let base = track.railPoint(at: a, lateral: offset)
             desiredEye = base + SIMD3(0, underground ? 2.6 : 4.0, 0)
             desiredTarget = center + SIMD3(0, 1.8, 0)
-            cameraNode.camera?.zNear = 0.3
+            setZNear(0.3)
         }
 
         if holdingEntry {
@@ -557,6 +574,13 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         }
     }
 
+    private var zNear: Double = 0.4
+    private func setZNear(_ value: Double) {
+        guard value != zNear else { return }
+        zNear = value
+        cameraNode.camera?.zNear = value
+    }
+
     private func makeTrain(_ t: Train) -> [SCNNode] {
         guard let factory = assets.factories[t.lineID] else { return [] }
         let cars = factory.makeTrain(destination: t.destinationName)
@@ -587,16 +611,14 @@ final class RideSceneController: NSObject, ObservableObject, SCNSceneRendererDel
         }
     }
 
-    /// Time used for the sun. `-skyHour 19.5` (debug builds) pins it to that IST hour today.
+    /// Time used for the sun. `-skyHour 19.5` (a launch argument) pins it to that IST hour today.
     private static func skyDate() -> Date {
-        #if DEBUG
         let hour = UserDefaults.standard.double(forKey: "skyHour")
         if hour > 0 {
             var cal = Calendar(identifier: .gregorian)
             cal.timeZone = TimeZone(identifier: "Asia/Kolkata")!
             return cal.startOfDay(for: Date()).addingTimeInterval(hour * 3600)
         }
-        #endif
         return Date()
     }
 

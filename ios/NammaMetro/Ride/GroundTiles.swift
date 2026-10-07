@@ -21,6 +21,8 @@ final class GroundTiles {
     private let maxInFlight = 5
     private var tiles: [Key: SCNNode] = [:]
     private var inFlight: Set<Key> = []
+    /// Snapshots that failed (e.g. offline) wait before retrying.
+    private var failed: [Key: Date] = [:]
     private let baseMaterial: SCNMaterial
     private var tileMaterials: [Key: SCNMaterial] = [:]
     private var brightness: CGFloat = 1
@@ -49,7 +51,8 @@ final class GroundTiles {
         var wanted: [(key: Key, rank: Int)] = []
         for (li, level) in levels.enumerated() {
             let ci = Int(floor(focus.x / level.meters)), cj = Int(floor(focus.y / level.meters))
-            for (key, node) in tiles where key.level == li && (abs(key.i - ci) > level.radius + 1 || abs(key.j - cj) > level.radius + 1) {
+            let keep = level.radius + (li == 0 ? 0 : 1)
+            for (key, node) in tiles where key.level == li && (abs(key.i - ci) > keep || abs(key.j - cj) > keep) {
                 node.removeFromParentNode()
                 tiles[key] = nil
                 tileMaterials[key] = nil
@@ -57,7 +60,7 @@ final class GroundTiles {
             for di in -level.radius...level.radius {
                 for dj in -level.radius...level.radius {
                     let k = Key(level: li, i: ci + di, j: cj + dj)
-                    if tiles[k] == nil && !inFlight.contains(k) {
+                    if tiles[k] == nil && !inFlight.contains(k) && (failed[k].map { -$0.timeIntervalSinceNow > 30 } ?? true) {
                         // Nearest sharp tiles first, then the coarse ring.
                         wanted.append((k, li * 10 + max(abs(di), abs(dj)) * (li == 0 ? 2 : 1)))
                     }
@@ -106,7 +109,11 @@ final class GroundTiles {
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.inFlight.remove(k)
-                guard let image = snapshot?.image else { return }
+                guard let image = snapshot?.image else {
+                    self.failed[k] = Date()
+                    return
+                }
+                self.failed[k] = nil
                 RideAssets.shared.storeTile(image, key: cacheKey)
                 self.addTile(k, image: image)
             }

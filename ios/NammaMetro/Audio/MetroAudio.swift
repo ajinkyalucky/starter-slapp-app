@@ -54,6 +54,8 @@ final class MetroAudio: NSObject, AVSpeechSynthesizerDelegate {
     private var smoothedAccel = 0.0
     private var musicLevel: Float = 0.32
     private var ducked = false
+    /// Main thread only. Bumped by `stop()` so an announcement still in flight is dropped.
+    private var speechGeneration = 0
 
     private static let mono = AVAudioFormat(standardFormatWithSampleRate: Synth.sampleRate, channels: 1)!
     private static let stereo = AVAudioFormat(standardFormatWithSampleRate: Synth.sampleRate, channels: 2)!
@@ -92,7 +94,10 @@ final class MetroAudio: NSObject, AVSpeechSynthesizerDelegate {
             engine.stop()
             try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         }
-        DispatchQueue.main.async { self.speech.stopSpeaking(at: .word) }
+        DispatchQueue.main.async {
+            self.speechGeneration += 1
+            self.speech.stopSpeaking(at: .word)
+        }
     }
 
     /// Re-reads the settings (call after a toggle changes).
@@ -122,14 +127,34 @@ final class MetroAudio: NSObject, AVSpeechSynthesizerDelegate {
         play(\.beeps, when: .trainSounds)
     }
 
-    /// "Next station" in Kannada, English and Hindi, as on Namma Metro trains.
+    /// "Next station" in Kannada, English and Hindi, as on Namma Metro trains. Call on the main thread.
     func announceNext(stationID: String, lineID: String, isLast: Bool) {
-        guard allowed(.announcements), let station = MetroNetwork.stations[stationID] else { return }
+        let generation = speechGeneration
+        queue.async { [self] in
+            // `context` belongs to the audio queue; check it there.
+            guard allowed(.announcements), let lines = Self.announcement(stationID: stationID, lineID: lineID, isLast: isLast) else { return }
+            DispatchQueue.main.async { [self] in
+                // stop() ran since the call: the screen is gone, stay quiet.
+                guard generation == speechGeneration else { return }
+                speech.stopSpeaking(at: .word)
+                for (text, language) in lines {
+                    let u = AVSpeechUtterance(string: text)
+                    u.voice = AVSpeechSynthesisVoice(language: language)
+                    u.rate = AVSpeechUtteranceDefaultSpeechRate * 0.92
+                    u.postUtteranceDelay = 0.35
+                    speech.speak(u)
+                }
+            }
+        }
+    }
+
+    /// The three lines and their voice languages.
+    private static func announcement(stationID: String, lineID: String, isLast: Bool) -> [(String, String)]? {
+        guard let station = MetroNetwork.stations[stationID] else { return nil }
         let name = station.name
         let changes = MetroNetwork.lines.filter { $0.id != lineID && $0.stationIDs.contains(stationID) }
-
         var lines: [(String, String)] = []
-        if let kannada = Self.kannadaVoice, let kn = Timetable.bundled.kannadaNames?[stationID] {
+        if let kannada = kannadaVoice, let kn = Timetable.bundled.kannadaNames?[stationID] {
             lines.append(("ಮುಂದಿನ ನಿಲ್ದಾಣ, \(kn).", kannada.language))
         } else {
             lines.append(("Mundina nildaana, \(name).", "en-IN"))
@@ -139,17 +164,7 @@ final class MetroAudio: NSObject, AVSpeechSynthesizerDelegate {
         if isLast { english += " This train terminates at \(name)." }
         lines.append((english, "en-IN"))
         lines.append(("अगला स्टेशन, \(name).", "hi-IN"))
-
-        DispatchQueue.main.async { [self] in
-            speech.stopSpeaking(at: .word)
-            for (text, language) in lines {
-                let u = AVSpeechUtterance(string: text)
-                u.voice = AVSpeechSynthesisVoice(language: language)
-                u.rate = AVSpeechUtteranceDefaultSpeechRate * 0.92
-                u.postUtteranceDelay = 0.35
-                speech.speak(u)
-            }
-        }
+        return lines
     }
 
     private static let kannadaVoice: AVSpeechSynthesisVoice? =

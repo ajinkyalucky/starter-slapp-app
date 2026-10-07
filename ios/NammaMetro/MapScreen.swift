@@ -22,9 +22,13 @@ struct MapScreen: View {
 
     private struct RideTarget: Identifiable {
         let id: String
+        let train: Train
         var camera: RideCamera = .follow
         var entry: RideEntry
         var returnCamera: MapCamera?
+        /// Identifies this ride, so timers and callbacks from an earlier one can't touch it.
+        let token = UUID()
+        var closing = false
     }
 
     /// Map camera the ride zooms into before the 3D scene takes over.
@@ -37,8 +41,13 @@ struct MapScreen: View {
                 .overlay(alignment: .bottom) { legend.opacity(ride == nil ? 1 : 0) }
 
             if let ride {
-                RideView(feed: feed, trainID: ride.id, camera: ride.camera, entry: ride.entry, started: rideShown,
-                         onReady: { rideReady = true; revealRide() }, onClose: closeRide)
+                RideView(feed: feed, train: ride.train, camera: ride.camera, entry: ride.entry, started: rideShown,
+                         onReady: { [token = ride.token] in
+                             guard self.ride?.token == token else { return }
+                             rideReady = true
+                             revealRide()
+                         },
+                         onClose: closeRide)
                     .opacity(rideShown ? 1 : 0)
                     .allowsHitTesting(rideShown)
             }
@@ -49,9 +58,7 @@ struct MapScreen: View {
             NavigationStack { StationDetailView(feed: feed, station: station) }
                 .presentationDetents([.medium, .large])
         }
-        #if DEBUG
-        .onAppear(perform: debugAutoRide)
-        #endif
+        .onAppear(perform: launchShortcuts)
     }
 
     // MARK: Ride transition
@@ -60,12 +67,14 @@ struct MapScreen: View {
     /// cross-fades into the 3D scene, which starts from the same viewpoint.
     private func startRide(_ train: Train, camera mode: RideCamera = .follow) {
         guard ride == nil, let track = MetroNetwork.tracks[train.lineID] else { return }
+        PerfMonitor.mark("ride tapped")
         let sign = train.direction == .forward ? 1.0 : -1.0
         let t = track.tangent(at: train.distance) * sign
         let heading = atan2(t.x, -t.y) * 180 / .pi
         let entry = RideEntry(center: train.coordinate, distance: Self.entryDistance, heading: heading,
                               pitch: Self.entryPitch)
-        ride = RideTarget(id: train.id, camera: mode, entry: entry, returnCamera: lastCamera)
+        let target = RideTarget(id: train.id, train: train, camera: mode, entry: entry, returnCamera: lastCamera)
+        ride = target
         withAnimation(.easeInOut(duration: 1.1)) {
             camera = .camera(MapCamera(centerCoordinate: train.coordinate, distance: Self.entryDistance,
                                        heading: heading, pitch: Self.entryPitch))
@@ -73,34 +82,48 @@ struct MapScreen: View {
         rideReady = false
         zoomDone = false
         // The map reports when its flight lands (onMapCameraChange .onEnd); these are fallbacks.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { zoomDone = true; revealRide() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) { rideReady = true; revealRide() }
+        let token = target.token
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            guard ride?.token == token else { return }
+            zoomDone = true
+            revealRide()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+            guard ride?.token == token else { return }
+            rideReady = true
+            revealRide()
+        }
     }
 
     /// Fades the 3D scene in once the map has landed and the scene's ground has loaded,
     /// starting the 3D camera from the map's actual final camera.
     private func revealRide() {
-        guard ride != nil, zoomDone, rideReady, !rideShown else { return }
+        guard let current = ride, !current.closing, zoomDone, rideReady, !rideShown else { return }
         if let cam = liveCamera {
             ride?.entry = RideEntry(center: cam.centerCoordinate, distance: cam.distance, heading: cam.heading,
                                     pitch: cam.pitch)
         }
+        PerfMonitor.mark("ride revealed")
         withAnimation(.easeInOut(duration: 0.6)) { rideShown = true }
     }
 
     private func closeRide() {
-        let back = ride?.returnCamera
+        guard let current = ride, !current.closing else { return }
+        ride?.closing = true
+        rideReady = false
+        zoomDone = true   // the return flight shouldn't count as an arrival
         withAnimation(.easeInOut(duration: 0.45)) { rideShown = false }
-        zoomDone = true   // returning flight shouldn't count as an arrival
-        if let back {
+        if let back = current.returnCamera {
             withAnimation(.easeInOut(duration: 1.1)) { camera = .camera(back) }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { ride = nil }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if ride?.token == current.token { ride = nil }
+        }
     }
 
-    #if DEBUG
-    /// `-autoRide <lineID> [-rideNear <stationID>] [-rideCamera Follow|Front|Trackside]` opens the 3D view on launch.
-    private func debugAutoRide() {
+    /// Launch arguments for testing and profiling (no effect without them):
+    /// `-autoRide <lineID> [-rideNear <stationID>] [-rideCamera Follow|Front|Trackside]` opens the 3D view.
+    private func launchShortcuts() {
         let args = UserDefaults.standard
         guard let lineID = args.string(forKey: "autoRide"), let line = MetroNetwork.line(lineID) else { return }
         let running = feed.trains(at: .now).filter { $0.lineID == lineID && $0.status == .moving }
@@ -114,7 +137,6 @@ struct MapScreen: View {
             startRide(train, camera: args.string(forKey: "rideCamera").flatMap(RideCamera.init) ?? .follow)
         }
     }
-    #endif
 
     // MARK: Map
 
@@ -140,7 +162,7 @@ struct MapScreen: View {
                 liveCamera = context.camera
             }
             .onMapCameraChange(frequency: .onEnd) { _ in
-                if ride != nil, !zoomDone {
+                if let current = ride, !current.closing, !zoomDone {
                     zoomDone = true
                     revealRide()
                 }
@@ -149,8 +171,8 @@ struct MapScreen: View {
                 if let train = train(near: point, proxy: proxy) { startRide(train) }
             }
             .overlay {
-                TimelineView(.animation(paused: rideShown)) { context in
-                    Canvas { gc, _ in drawTrains(at: context.date, in: gc, proxy: proxy) }
+                TimelineView(.animation(minimumInterval: 1.0 / 60, paused: rideShown)) { context in
+                    Canvas { gc, size in drawTrains(at: context.date, in: gc, size: size, proxy: proxy) }
                 }
                 .allowsHitTesting(false)
             }
@@ -179,9 +201,16 @@ struct MapScreen: View {
     }
 
     /// Each train as a short bar riding its own side of the track, white head first.
-    private func drawTrains(at date: Date, in gc: GraphicsContext, proxy: MapProxy) {
+    private static let perf = PerfMonitor("map")
+
+    private func drawTrains(at date: Date, in gc: GraphicsContext, size: CGSize, proxy: MapProxy) {
+        let workStart = CACurrentMediaTime()
+        defer { Self.perf.frame(work: CACurrentMediaTime() - workStart) }
         let m = metersPerPoint
+        let visible = CGRect(origin: .zero, size: size).insetBy(dx: -60, dy: -60)
         for train in feed.trains(at: date) where !hiddenLines.contains(train.lineID) {
+            // Cheap reject for trains off screen before projecting the whole bar.
+            guard let center = proxy.convert(train.coordinate, to: .local), visible.contains(center) else { continue }
             let points = trainPath(train, metersPerPoint: m).compactMap { proxy.convert($0, to: .local) }
             guard points.count > 1, let head = points.first else { continue }
             var path = Path()
@@ -200,8 +229,8 @@ struct MapScreen: View {
         let sign = train.direction == .forward ? 1.0 : -1.0
         let length = max(Double(CarSpec.trainLength), m * 32)
         let lateral = TrackLayout.lateral(for: train.direction) / TrackLayout.trackOffset * max(2, m * 3.5)
-        return (0...10).map { k in
-            let s = train.distance + sign * length * (0.5 - Double(k) / 10)
+        return (0...6).map { k in
+            let s = train.distance + sign * length * (0.5 - Double(k) / 6)
             let p = track.point(at: s) + track.right(at: s) * lateral
             return MetroWorld.mapPoint(p).coordinate
         }

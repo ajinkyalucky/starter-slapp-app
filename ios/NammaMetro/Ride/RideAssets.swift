@@ -49,7 +49,7 @@ final class RideAssets {
         }
         self.factories = factories
         self.sceneries = sceneries
-        tiles.countLimit = 120
+        tiles.totalCostLimit = 96 << 20   // ~24 decoded 1024² tiles
     }
 
     /// Builds the shared assets and today's sky in the background.
@@ -76,7 +76,10 @@ final class RideAssets {
     }
 
     func tile(_ key: String) -> UIImage? { tiles.object(forKey: key as NSString) }
-    func storeTile(_ image: UIImage, key: String) { tiles.setObject(image, forKey: key as NSString) }
+    func storeTile(_ image: UIImage, key: String) {
+        let cost = Int(image.size.width * image.scale * image.size.height * image.scale * 4)
+        tiles.setObject(image, forKey: key as NSString, cost: cost)
+    }
 
     /// Sky image for the current 10-minute slot (regenerating it takes ~100 ms).
     func skyImage(for state: SkyState, date: Date) -> UIImage {

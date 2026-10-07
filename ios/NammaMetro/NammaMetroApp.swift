@@ -16,12 +16,10 @@ struct NammaMetroApp: App {
         self.base = base
         self.feed = feed
         _tracker = State(initialValue: TripTracker(feed: feed, base: base, calibration: calibration))
-        #if DEBUG
-        // `-autoRide <lineID>` (see MapScreen) needs the map tab up front.
+        // Launch shortcuts `-autoRide <lineID>` / `-openMap YES` (see MapScreen) need the map tab up front.
         if UserDefaults.standard.string(forKey: "autoRide") != nil || UserDefaults.standard.bool(forKey: "openMap") {
             _tab = State(initialValue: .map)
         }
-        #endif
     }
 
     var body: some Scene {

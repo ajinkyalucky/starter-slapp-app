@@ -49,6 +49,7 @@ enum Trees {
             }
         }
         guard count > 0, let g = mesh.geometry(materials: materials) else { return nil }
+        g.levelsOfDetail = [SCNLevelOfDetail(geometry: nil, worldSpaceDistance: 900)]
         let node = SCNNode(geometry: g)
         node.name = "trees"
         node.castsShadow = true

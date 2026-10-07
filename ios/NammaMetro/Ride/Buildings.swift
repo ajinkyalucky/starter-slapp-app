@@ -83,6 +83,8 @@ enum CityBuildings {
         }
         let mats = materials.facades + [materials.buildingRoof, materials.waterTank]
         guard let g = mesh.geometry(materials: mats) else { return nil }
+        // Beyond this the haze hides them; skipping saves draw calls and shadow work.
+        g.levelsOfDetail = [SCNLevelOfDetail(geometry: nil, worldSpaceDistance: 1300)]
         let node = SCNNode(geometry: g)
         node.name = "buildings"
         node.castsShadow = true

@@ -10,14 +10,14 @@ struct RideView: View {
     private let started: Bool
 
     /// With an `entry`, the camera holds the map's pose until `started` turns true.
-    init(feed: TrainFeed, trainID: String, camera: RideCamera = .follow, entry: RideEntry? = nil,
+    init(feed: TrainFeed, train: Train, camera: RideCamera = .follow, entry: RideEntry? = nil,
          started: Bool = true, onReady: (() -> Void)? = nil, onClose: @escaping () -> Void) {
         self.entry = entry
         self.started = started
         self.onClose = onClose
         // StateObject's autoclosure runs once; SwiftUI re-creates this view often.
         _controller = StateObject(wrappedValue: RideSceneController(
-            feed: feed, trainID: trainID, entry: entry, camera: camera, onReady: onReady))
+            feed: feed, train: train, entry: entry, camera: camera, onReady: onReady))
     }
 
     var body: some View {
@@ -34,6 +34,8 @@ struct RideView: View {
         }
         .environment(\.colorScheme, .dark)
         .onAppear {
+            // Keep the screen awake while watching a ride.
+            UIApplication.shared.isIdleTimerDisabled = true
             guard started else { return }
             if let entry { controller.startEntry(entry) }
             MetroAudio.shared.start(context: .ride)
@@ -43,7 +45,11 @@ struct RideView: View {
             if let entry { controller.startEntry(entry) }
             MetroAudio.shared.start(context: .ride)
         }
-        .onDisappear { MetroAudio.shared.stop() }
+        .onDisappear {
+            controller.shutdown()
+            MetroAudio.shared.stop()
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
     }
 
     private var lineColor: Color {
@@ -132,6 +138,8 @@ struct RideSceneView: UIViewRepresentable {
         view.isPlaying = true
         view.rendersContinuously = true
         view.antialiasingMode = .multisampling4X
+        // 2x with 4x MSAA looks as crisp as native 3x here at well under half the pixel cost.
+        view.contentScaleFactor = min(UIScreen.main.scale, 2)
         view.preferredFramesPerSecond = 60
         view.backgroundColor = .black
         view.isJitteringEnabled = false
