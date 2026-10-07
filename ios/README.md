@@ -4,18 +4,21 @@ SwiftUI app (iOS 17+) showing Bengaluru Namma Metro trains on a map plus per-sta
 
 ## Status
 
-BMRCL has not published an official realtime feed. The app therefore uses `ScheduleFeed`,
-which **estimates** train positions from a fixed-headway timetable and labels them as
-estimated in the UI. Everything depends on the `TrainFeed` protocol (`Models.swift`), so a
-realtime source (GTFS-RT, a partner API, crowdsourced reports) can replace it by providing
-another implementation and changing one line in `NammaMetroApp.swift`.
+Plan a journey (with changes at Majestic and RV Road), see fares, and track it live with
+"next stop" alerts. BMRCL has no public realtime feed, so `ScheduleFeed` runs BMRCL's published
+timetable: every trip, including peak short loops and the Monday, Saturday (2nd/4th and holidays)
+and Sunday tables (`Resources/timetable.json`, built by `tools/build_timetable.py` from
+[Vonter/bmrcl-gtfs](https://github.com/Vonter/bmrcl-gtfs), ODbL). Terminal departures are BMRCL's.
+Times at other stations are modelled and usually within 2 min. Riders can sync to the real trains
+from the platform ("Train's here", or the countdown on the platform display), and GPS stops at
+above-ground stations sync automatically during a trip. `CalibratedFeed` shifts that line and
+direction for 90 minutes.
 
-Known placeholders to replace before shipping:
-- `ServiceProfile` headways, first/last train and 2-minute segment times are assumptions.
-- Station coordinates are anchors plus linear interpolation (`StationData.swift`). Use
-  `stops.txt` from a GTFS dataset (e.g. the unofficial BMRCL GTFS) for real positions and
-  to draw track shapes.
-- Station lists/lines (Purple, Green, Yellow) should be checked against current BMRCL data.
+Everything depends on the `TrainFeed` protocol (`Models.swift`), so a realtime source (GTFS-RT,
+a partner API, crowdsourced reports) can replace it with one line in `NammaMetroApp.swift`.
+
+Not yet covered: the Pink line (opening expected late Oct 2026), one-off late-night service
+extensions, and service disruptions.
 
 ## Build
 

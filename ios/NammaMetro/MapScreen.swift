@@ -10,6 +10,12 @@ struct MapScreen: View {
             span: MKCoordinateSpan(latitudeDelta: 0.25, longitudeDelta: 0.25)))
     @State private var hiddenLines: Set<String> = []
     @State private var selectedStation: Station?
+    @State private var ride: RideTarget?
+
+    private struct RideTarget: Identifiable {
+        let id: String
+        var camera: RideCamera = .follow
+    }
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 2)) { context in
@@ -20,7 +26,27 @@ struct MapScreen: View {
             NavigationStack { StationDetailView(feed: feed, station: station) }
                 .presentationDetents([.medium, .large])
         }
+        .fullScreenCover(item: $ride) { RideView(feed: feed, trainID: $0.id, camera: $0.camera) }
+        #if DEBUG
+        .onAppear(perform: debugAutoRide)
+        #endif
     }
+
+    #if DEBUG
+    /// `-autoRide <lineID> [-rideNear <stationID>] [-rideCamera Follow|Front|Trackside]` opens the 3D view on launch.
+    private func debugAutoRide() {
+        let args = UserDefaults.standard
+        guard let lineID = args.string(forKey: "autoRide"), let line = MetroNetwork.line(lineID) else { return }
+        let running = feed.trains(at: .now).filter { $0.lineID == lineID && $0.status == .moving }
+        // `-rideNear <stationID>` picks the train closest to that station.
+        let near = args.string(forKey: "rideNear").flatMap { id in
+            line.stationIDs.firstIndex(of: id).map { line.track.stationDistances[$0] }
+        }
+        guard let train = near.map({ s in running.min { abs($0.distance - s) < abs($1.distance - s) } }) ?? running.first
+        else { return }
+        ride = RideTarget(id: train.id, camera: args.string(forKey: "rideCamera").flatMap(RideCamera.init) ?? .follow)
+    }
+    #endif
 
     private var visibleLines: [MetroLine] {
         MetroNetwork.lines.filter { !hiddenLines.contains($0.id) }
@@ -34,7 +60,8 @@ struct MapScreen: View {
             }
             ForEach(trains) { train in
                 Annotation("", coordinate: train.coordinate) {
-                    TrainMarker(train: train)
+                    Button { ride = RideTarget(id: train.id) } label: { TrainMarker(train: train) }
+                        .accessibilityLabel("\(train.destinationName) train, view in 3D")
                 }
             }
         }
@@ -65,19 +92,31 @@ struct MapScreen: View {
     }
 
     private func header(trainCount: Int) -> some View {
-        HStack {
-            Text("\(trainCount) trains running")
-            if feed.isEstimated {
-                Text("· Estimated from timetable").foregroundStyle(.secondary)
+        VStack(spacing: 2) {
+            HStack {
+                Text("\(trainCount) trains running")
+                if feed.isEstimated {
+                    Text("· Estimated from timetable").foregroundStyle(.secondary)
+                }
             }
+            Text("Tap a train to ride it in 3D").font(.caption).foregroundStyle(.secondary)
         }
         .font(.footnote)
-        .padding(8)
-        .background(.regularMaterial, in: Capsule())
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .padding(.top, 8)
     }
 
     private var legend: some View {
+        VStack(spacing: 4) {
+            legendButtons
+            Text("Track data \(MetroNetwork.attribution)").font(.system(size: 9)).foregroundStyle(.secondary)
+        }
+        .padding(.bottom, 8)
+    }
+
+    private var legendButtons: some View {
         HStack {
             ForEach(MetroNetwork.lines) { line in
                 let hidden = hiddenLines.contains(line.id)
@@ -92,7 +131,6 @@ struct MapScreen: View {
         }
         .padding(10)
         .background(.regularMaterial, in: Capsule())
-        .padding(.bottom, 8)
     }
 }
 
