@@ -23,7 +23,9 @@ struct Sighting: Codable, Hashable {
 
 /// Per line and direction time shifts learnt from sightings. A train running
 /// 90 s behind the timetable gets offset +90 s, and so does every train on
-/// that line and direction until the shift goes stale.
+/// that line and direction until the shift goes stale. Shifts come from this
+/// rider's own sightings and from other riders' (`CrowdEstimate`, via `CrowdSync`);
+/// whichever was observed more recently wins.
 @Observable
 final class Calibration {
     struct Offset: Codable, Hashable {
@@ -31,13 +33,35 @@ final class Calibration {
         let sighting: Sighting
     }
 
+    /// Other riders' combined sightings for one line and direction.
+    struct CrowdEstimate: Codable, Hashable {
+        let seconds: TimeInterval
+        let reports: Int
+        let riders: Int
+        let newestAt: Date
+    }
+
+    /// Where a line's current correction comes from.
+    enum Sync: Hashable {
+        case mine(Offset)
+        case crowd(CrowdEstimate)
+    }
+
+    /// The server only aggregates the last 45 minutes; trust a crowd estimate about as long.
+    static let crowdLifetime: TimeInterval = 45 * 60
+
+    /// Called after a sighting is recorded, so it can be shared. Set once at start-up.
+    @ObservationIgnored var onRecord: ((Sighting, TimeInterval) -> Void)?
+
     /// Delays drift and service gets rebalanced, so a sighting stops counting after this long.
     static let lifetime: TimeInterval = 90 * 60
 
     /// Read on the main thread by the UI (observed).
     private(set) var offsets: [String: Offset] = [:]
-    /// Copy for `offset(_:_:at:)`, which the 3D view calls from its render thread.
+    private(set) var crowd: [String: CrowdEstimate] = [:]
+    /// Copies for `offset(_:_:at:)`, which the 3D view calls from its render thread.
     @ObservationIgnored private var snapshot: [String: Offset] = [:]
+    @ObservationIgnored private var crowdSnapshot: [String: CrowdEstimate] = [:]
     @ObservationIgnored private let lock = NSLock()
     @ObservationIgnored private let defaults: UserDefaults
     private static let storageKey = "calibration.offsets"
@@ -54,18 +78,45 @@ final class Calibration {
     static func key(_ lineID: String, _ direction: Direction) -> String { "\(lineID)-\(direction.rawValue)" }
 
     /// The shift for trains running at `date`: a sighting only says something
-    /// about trains within `lifetime` of it, before or after. Safe from any thread.
+    /// about trains near it in time. Safe from any thread.
     func offset(_ lineID: String, _ direction: Direction, at date: Date) -> TimeInterval {
         let key = Self.key(lineID, direction)
-        guard let o = lock.withLock({ snapshot[key] }),
-              abs(date.timeIntervalSince(o.sighting.trainAt)) < Self.lifetime else { return 0 }
-        return o.seconds
+        let (mine, others) = lock.withLock { (snapshot[key], crowdSnapshot[key]) }
+        let m = mine.flatMap { abs(date.timeIntervalSince($0.sighting.trainAt)) < Self.lifetime ? $0 : nil }
+        let c = others.flatMap { abs(date.timeIntervalSince($0.newestAt)) < Self.crowdLifetime ? $0 : nil }
+        switch (m, c) {
+        case let (m?, c?): return m.sighting.trainAt >= c.newestAt ? m.seconds : c.seconds
+        case let (m?, nil): return m.seconds
+        case let (nil, c?): return c.seconds
+        default: return 0
+        }
     }
 
     func activeOffset(_ lineID: String, _ direction: Direction, at date: Date = .now) -> Offset? {
         guard let o = offsets[Self.key(lineID, direction)],
               date.timeIntervalSince(o.sighting.recorded) < Self.lifetime else { return nil }
         return o
+    }
+
+    /// The correction in force now for a line and direction, and who made it.
+    func activeSync(_ lineID: String, _ direction: Direction, at date: Date = .now) -> Sync? {
+        let mine = activeOffset(lineID, direction, at: date)
+        let others = crowd[Self.key(lineID, direction)].flatMap {
+            date.timeIntervalSince($0.newestAt) < Self.crowdLifetime ? $0 : nil
+        }
+        switch (mine, others) {
+        case let (m?, c?): return m.sighting.trainAt >= c.newestAt ? .mine(m) : .crowd(c)
+        case let (m?, nil): return .mine(m)
+        case let (nil, c?): return .crowd(c)
+        default: return nil
+        }
+    }
+
+    /// Replaces the crowd estimates (main thread).
+    func applyCrowd(_ estimates: [String: CrowdEstimate]) {
+        guard estimates != crowd else { return }
+        crowd = estimates
+        lock.withLock { crowdSnapshot = estimates }
     }
 
     /// Matches the sighting to the closest scheduled train and stores the
@@ -88,6 +139,7 @@ final class Calibration {
         guard abs(shift) <= headway / 2 + 1 else { return nil }
         offsets[Self.key(sighting.lineID, sighting.direction)] = Offset(seconds: shift, sighting: sighting)
         save()
+        onRecord?(sighting, shift)
         return shift
     }
 

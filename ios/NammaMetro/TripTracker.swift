@@ -105,13 +105,14 @@ final class TripTracker: NSObject, CLLocationManagerDelegate {
         return Planner(feed: feed).plan(from: from, to: journey.toID, leaving: date)
     }
 
-    /// The rider confirms the train is at their platform right now.
+    /// The rider confirms the train is at their platform now, or (from the
+    /// platform display's countdown) when it will be.
     @discardableResult
-    func confirmTrainHere(leg n: Int, at stationID: String, date: Date = .now) -> TimeInterval? {
+    func confirmTrainHere(leg n: Int, at stationID: String, date: Date = .now, source: Sighting.Source = .tapped) -> TimeInterval? {
         guard let leg = journey?.legs[n], let line = leg.line else { return nil }
         let direction = direction(of: leg, on: line)
         let shift = calibration.record(
-            Sighting(lineID: leg.lineID, direction: direction, stationID: stationID, trainAt: date, source: .tapped, recorded: date),
+            Sighting(lineID: leg.lineID, direction: direction, stationID: stationID, trainAt: date, source: source, recorded: .now),
             base: base)
         rescheduleAlerts()
         return shift

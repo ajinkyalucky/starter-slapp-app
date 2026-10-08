@@ -5,6 +5,7 @@ struct NammaMetroApp: App {
     private let base: TrainFeed
     private let feed: TrainFeed
     @State private var tracker: TripTracker
+    @State private var crowd: CrowdSync
     @State private var tab = Tab.plan
 
     enum Tab { case plan, map, stations }
@@ -16,6 +17,7 @@ struct NammaMetroApp: App {
         self.base = base
         self.feed = feed
         _tracker = State(initialValue: TripTracker(feed: feed, base: base, calibration: calibration))
+        _crowd = State(initialValue: CrowdSync(calibration: calibration))
         // Launch shortcuts `-autoRide <lineID>` / `-openMap YES` (see MapScreen) need the map tab up front.
         if UserDefaults.standard.string(forKey: "autoRide") != nil || UserDefaults.standard.bool(forKey: "openMap") {
             _tab = State(initialValue: .map)
@@ -38,6 +40,9 @@ struct NammaMetroApp: App {
                     .tag(Tab.stations)
             }
             .environment(tracker)
+            .environment(crowd)
+            // Other riders' corrections, refreshed every 30 s while the app is open.
+            .task { await crowd.run() }
         }
     }
 

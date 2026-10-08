@@ -6,9 +6,32 @@
     <false/>
     <key>NSPrivacyTrackingDomains</key>
     <array/>
-    <!-- Nothing leaves the device: location, trips and syncs stay on the phone. -->
+    <!-- Shared with metro-buddy-sync when the rider allows it: which station a train was
+         seen at (coarse location) and a random install ID (stored by the server only as a
+         keyed hash). Neither is linked to the rider or used for tracking. -->
     <key>NSPrivacyCollectedDataTypes</key>
-    <array/>
+    <array>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeCoarseLocation</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeDeviceID</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+        </dict>
+    </array>
     <key>NSPrivacyAccessedAPITypes</key>
     <array>
         <dict>

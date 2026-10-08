@@ -270,9 +270,9 @@ struct AccuracyNote: View {
     @Environment(TripTracker.self) private var tracker
 
     var body: some View {
-        let synced = lineIDs.sorted().compactMap { id -> (String, Calibration.Offset)? in
+        let synced = lineIDs.sorted().compactMap { id -> (String, Calibration.Sync)? in
             for d in [Direction.forward, .reverse] {
-                if let o = tracker.calibration.activeOffset(id, d) { return (id, o) }
+                if let s = tracker.calibration.activeSync(id, d) { return (id, s) }
             }
             return nil
         }
@@ -282,8 +282,8 @@ struct AccuracyNote: View {
             } else if synced.isEmpty {
                 Text("Times follow BMRCL’s published timetable. Times between the end stations are modelled and usually within 2 min. Start the trip and tap “Train’s here” on the platform to sync with the real trains.")
             } else {
-                ForEach(synced, id: \.0) { id, o in
-                    Text("\(MetroNetwork.line(id)?.name ?? id) synced \(o.sighting.recorded.formatted(.relative(presentation: .named))): \(o.seconds.delayText).")
+                ForEach(synced, id: \.0) { id, sync in
+                    Text(Self.describe(sync, line: MetroNetwork.line(id)?.name ?? id))
                 }
             }
         }
@@ -292,6 +292,16 @@ struct AccuracyNote: View {
         Text("Unofficial app, not affiliated with BMRCL. \(Timetable.bundled.attribution)")
             .font(.caption2)
             .foregroundStyle(.tertiary)
+    }
+
+    static func describe(_ sync: Calibration.Sync, line: String) -> String {
+        switch sync {
+        case .mine(let o):
+            return "\(line) synced by you \(o.sighting.recorded.formatted(.relative(presentation: .named))): \(o.seconds.delayText)."
+        case .crowd(let c):
+            let who = c.riders == 1 ? "a rider" : "\(c.riders) riders"
+            return "\(line) synced by \(who) \(c.newestAt.formatted(.relative(presentation: .named))): \(c.seconds.delayText)."
+        }
     }
 }
 

@@ -4,6 +4,7 @@ import SwiftUI
 struct TripView: View {
     let feed: TrainFeed
     @Environment(TripTracker.self) private var tracker
+    @Environment(CrowdSync.self) private var crowd
     @Environment(\.dismiss) private var dismiss
     @State private var boardMinutes = 2
     @State private var syncMessage: String?
@@ -148,7 +149,7 @@ struct TripView: View {
             HStack {
                 Stepper("Board says \(boardMinutes) min", value: $boardMinutes, in: 0...20)
                 Button("Sync") {
-                    let shift = tracker.confirmTrainHere(leg: n, at: station, date: .now.addingTimeInterval(Double(boardMinutes) * 60))
+                    let shift = tracker.confirmTrainHere(leg: n, at: station, date: .now.addingTimeInterval(Double(boardMinutes) * 60), source: .platformBoard)
                     syncMessage = shift.map { "Synced: trains \($0.delayText)." } ?? "That didn’t match a scheduled train; times unchanged."
                 }
                 .buttonStyle(.bordered)
@@ -156,10 +157,13 @@ struct TripView: View {
             if let syncMessage {
                 Text(syncMessage).font(.footnote).foregroundStyle(.secondary)
             }
+            Toggle("Share with other riders", isOn: Binding(get: { crowd.sharing }, set: { crowd.sharing = $0 }))
         } header: {
             Text("Sync with the platform").textCase(nil)
         } footer: {
-            Text("The platform display shows the real countdown. Entering it here corrects every train on this line and direction for the next 90 minutes.")
+            Text(crowd.sharing
+                 ? "The platform display shows the real countdown. Syncing corrects every train on this line and direction, for you and for other riders. Only the line, station and delay are shared, anonymously."
+                 : "The platform display shows the real countdown. Syncing corrects every train on this line and direction for the next 90 minutes, on this phone only.")
         }
     }
 }

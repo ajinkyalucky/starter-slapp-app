@@ -74,4 +74,16 @@ final class DemoTour: XCTestCase {
     func testRideTrackside() {
         ride(["-autoRide", "yellow", "-rideNear", "jayadeva-hospital", "-rideCamera", "Trackside", "-skyHour", "10"], seconds: 12)
     }
+
+    /// Plan screen scrolled to the accuracy note, for checking crowd sync by eye.
+    func testAccuracyNote() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-plan.from", "indiranagar", "-plan.to", "mg-road", "-tracker.journey", "", "-calibration.offsets", ""]
+        app.launch()
+        pause(20)
+        app.swipeUp()
+        app.swipeUp()
+        mark("note")
+        pause(6)
+    }
 }
