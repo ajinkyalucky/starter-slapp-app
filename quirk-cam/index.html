@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quirk Cam</title>
+<style>
+  :root {
+    --bg: #14101f; --panel: #211a35; --ink: #fff7e6; --muted: #a79ec4;
+    --accent: #ffd23f; --accent2: #ff5d8f; --ok: #5ef2a6;
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: radial-gradient(1200px 600px at 20% -10%, #3a2470 0%, var(--bg) 60%);
+    color: var(--ink); font-family: ui-rounded, "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { margin: 0; font-size: clamp(1.8rem, 5vw, 2.8rem); letter-spacing: -.02em; }
+  h1 span { color: var(--accent); }
+  .tag { color: var(--muted); margin: 4px 0 18px; }
+  .grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .stage { position: relative; background: #000; border-radius: var(--radius); overflow: hidden; border: 3px solid #3b2f63; aspect-ratio: 4/3; }
+  canvas { width: 100%; height: 100%; display: block; }
+  .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 20px; background: rgba(10,6,22,.82); }
+  .overlay.hidden { display: none; }
+  .overlay h2 { margin: 0; font-size: 1.6rem; }
+  .overlay p { margin: 0; color: var(--muted); max-width: 34ch; }
+  .card { background: var(--panel); border-radius: var(--radius); padding: 16px; border: 1px solid #34295a; }
+  .card + .card { margin-top: 14px; }
+  .card h3 { margin: 0 0 8px; font-size: .8rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+  button {
+    font: inherit; font-weight: 700; border: 0; border-radius: 999px; padding: 11px 20px; cursor: pointer;
+    background: var(--accent); color: #2a1d00; transition: transform .08s, filter .15s;
+  }
+  button:hover { filter: brightness(1.08); } button:active { transform: scale(.96); }
+  button.alt { background: #3b2f63; color: var(--ink); }
+  button.pink { background: var(--accent2); color: #fff; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .reading { display: flex; gap: 14px; align-items: center; }
+  .reading .big { font-size: 3.6rem; line-height: 1; }
+  .persona { font-size: 1.25rem; font-weight: 800; line-height: 1.15; }
+  .line { color: var(--muted); margin-top: 4px; font-size: .95rem; }
+  .stats { margin-top: 12px; display: grid; gap: 8px; }
+  .stat { font-size: .85rem; }
+  .stat .lbl { display: flex; justify-content: space-between; margin-bottom: 3px; }
+  .bar { height: 8px; border-radius: 99px; background: #342a58; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 99px; transition: width .25s; }
+  .mini { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 12px; }
+  .mini div { text-align: center; font-size: .7rem; color: var(--muted); }
+  .mini .b { height: 46px; background: #342a58; border-radius: 8px; position: relative; overflow: hidden; margin-bottom: 3px; }
+  .mini .b i { position: absolute; bottom: 0; left: 0; right: 0; height: 0; background: var(--accent2); transition: height .25s; }
+  .mission { font-size: 1.15rem; font-weight: 800; min-height: 2.6em; }
+  .hud { display: flex; justify-content: space-between; color: var(--muted); font-size: .9rem; margin-bottom: 8px; }
+  .hud b { color: var(--ink); }
+  .snaps { display: flex; gap: 8px; overflow-x: auto; margin-top: 10px; }
+  .snaps a img { height: 70px; border-radius: 10px; border: 2px solid #3b2f63; display: block; }
+  .small { font-size: .78rem; color: var(--muted); margin-top: 14px; }
+  .hold { height: 14px; margin-top: 8px; }
+  .hold > i { background: var(--ok); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Quirk <span>Cam</span> 📸</h1>
+  <p class="tag">An AI that reads your face and tells you what you <em>really</em> are. Scientifically unreliable. Emotionally accurate.</p>
+
+  <div class="grid">
+    <div>
+      <div class="stage">
+        <canvas id="cv" width="640" height="480"></canvas>
+        <div class="overlay" id="intro">
+          <div style="font-size:3rem">🫠😮😤</div>
+          <h2>Ready to be judged?</h2>
+          <p>Turn on your camera and an AI will name your mood in the most dramatic way possible. Everything runs in your browser; nothing is uploaded.</p>
+          <button id="start">Turn on camera</button>
+          <p id="status" style="font-size:.85rem"></p>
+        </div>
+      </div>
+      <div class="row">
+        <button id="play" class="pink" disabled>🎯 Play Mood Missions</button>
+        <button id="free" class="alt" disabled>🔮 Just read me</button>
+        <button id="snap" class="alt" disabled>📷 Snap</button>
+      </div>
+      <div class="snaps" id="snaps"></div>
+    </div>
+
+    <div>
+      <div class="card" id="missionCard" style="display:none">
+        <h3>Mood Mission</h3>
+        <div class="hud"><span>Round <b id="rnd">1</b>/5</span><span>Time <b id="tm">8</b>s</span><span>Score <b id="sc">0</b></span></div>
+        <div class="mission" id="mission"></div>
+        <div class="bar hold"><i id="hold"></i></div>
+      </div>
+
+      <div class="card">
+        <h3>The AI's Verdict</h3>
+        <div class="reading">
+          <div class="big" id="emoji">🤔</div>
+          <div>
+            <div class="persona" id="persona">Waiting for a face…</div>
+            <div class="line" id="line">Step into the light, mysterious stranger.</div>
+          </div>
+        </div>
+        <div class="stats" id="stats"></div>
+        <div class="mini" id="mini"></div>
+      </div>
+    </div>
+  </div>
+  <p class="small">Fun fact: the AI only knows 7 basic expressions, so everything else is invented with great confidence. Needs HTTPS or localhost for camera access.</p>
+</div>
+
+<script src="vendor/face-api.js"></script>
+<script>
+const MODEL_URL = 'vendor/model/';
+
+const EMO = {
+  happy: { emoji: '😄', color: '#ffd23f', personas: [
+    ['Golden Retriever in a Sunbeam', 'Joy levels exceed what is legal on a weekday.', ['Tail-Wag Velocity', 'Zoomie Readiness', 'Belly-Rub Eligibility']],
+    ['Found Money in Old Jeans', 'You are glowing like a phone at 1% that just got a charger.', ['Pocket Luck', 'Smugness of Savings', 'Treat-Yourself Index']],
+    ['Cat Who Knocked Something Off a Table', 'And is thrilled about it. No regrets.', ['Mischief Level', 'Gravity Curiosity', 'Innocent Stare']],
+  ]},
+  neutral: { emoji: '🗿', color: '#9ad0ff', personas: [
+    ['Loading Screen at 99%', 'Nothing is happening, but the vibes are immaculate.', ['Buffering Depth', 'Mystery Aura', 'Blink Discipline']],
+    ['Houseplant With Secrets', 'Calm. Watching. Absolutely judging your watering schedule.', ['Photosynthesis', 'Silent Judgement', 'Leaf Posture']],
+    ['Stock Photo of a Man Holding Salad', 'Professionally blank. Hire this face for a brochure.', ['Corporate Serenity', 'Salad Conviction', 'Brochure Appeal']],
+  ]},
+  sad: { emoji: '🥺', color: '#6aa0ff', personas: [
+    ['Dropped Ice Cream Cone', 'The scoop never even had a chance. A moment of silence.', ['Sprinkle Grief', 'Sidewalk Betrayal', 'Napkin Urgency']],
+    ['Sad Violin Section', 'Somewhere, a tiny orchestra is tuning up for you.', ['Dramatic Strings', 'Rain-on-Window Vibes', 'Dramatic Sigh Count']],
+    ['Wi-Fi Bar With One Bar', 'Still trying. Barely connected. Have a snack.', ['Signal Strength', 'Buffering Sorrow', 'Soup Need']],
+  ]},
+  angry: { emoji: '😤', color: '#ff5d5d', personas: [
+    ['Goose With a Grudge', 'Honk. You remember what they did in 2019.', ['Honk Potential', 'Grudge Retention', 'Bread Demands']],
+    ['Reply-All Survivor', 'Eyebrows have entered the group chat and they are not happy.', ['Eyebrow Drama', 'Passive Aggression', 'Email Rage Voltage']],
+    ['Kettle About to Whistle', 'Steam is, scientifically, imminent.', ['Boil Percentage', 'Steam Readiness', 'Whistle Threat']],
+  ]},
+  fearful: { emoji: '😱', color: '#c18bff', personas: [
+    ['Cat Meeting a Cucumber', 'It could be a snake. It could be a snack. Nobody knows.', ['Leap Height', 'Cucumber Dread', 'Fur Fluff-Out']],
+    ['Person Who Heard "We Need to Talk"', 'Brain is running 47 tabs of worst-case scenarios.', ['Tab Overload', 'Spiral Velocity', 'Sweat Index']],
+    ['Haunted Pizzeria Night Guard', 'Did the mascot just move? It moved.', ['Jump-Scare Odds', 'Door Lock Speed', 'Animatronic Paranoia']],
+  ]},
+  disgusted: { emoji: '🤢', color: '#9be564', personas: [
+    ['Sniffed the Milk', 'It was fine yesterday. Today it has lore.', ['Expiry Suspicion', 'Fridge Betrayal', 'Nose Wrinkle Power']],
+    ['Food Critic, One Star', '"Would not eat again. Would not look again."', ['Review Savagery', 'Fork Disappointment', 'Gag Reflex Poise']],
+    ['Found a Hair in the Soup', 'Soup is now a crime scene.', ['Soup Trust', 'Waiter Summoning', 'Appetite Collapse']],
+  ]},
+  surprised: { emoji: '😮', color: '#ff9f43', personas: [
+    ['Surprise Party Victim', 'You did NOT see that coming. Allegedly you "hate surprises".', ['Gasp Volume', 'Cake Anticipation', 'Fake Calm Failure']],
+    ['Cartoon Character Mid-Gasp', 'Jaw is on the floor. Eyeballs are on stalks. Beautiful.', ['Jaw Drop Depth', 'Eyeball Pop', 'Comedic Timing']],
+    ['Someone Who Just Saw the Bill', 'The appetizers were HOW much?', ['Wallet Shock', 'Math Panic', 'Water-Only Resolve']],
+  ]},
+};
+const KEYS = Object.keys(EMO);
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+const video = document.createElement('video');
+video.playsInline = true; video.muted = true;
+
+// build static UI bits
+$('mini').innerHTML = KEYS.map(k => `<div><div class="b"><i id="m_${k}"></i></div>${EMO[k].emoji}</div>`).join('');
+$('stats').innerHTML = [0,1,2].map(i => `<div class="stat"><div class="lbl"><span id="sl${i}">—</span><span id="sv${i}">0%</span></div><div class="bar"><i id="sb${i}"></i></div></div>`).join('');
+
+let probs = Object.fromEntries(KEYS.map(k => [k, 0]));
+let face = null;              // smoothed box {x,y,w,h} in video coords
+let dominant = null, candidate = null, candCount = 0;
+let personaIdx = 0, personaSince = 0;
+let particles = [];
+let running = false, mode = 'free';
+
+// ---------- camera + models ----------
+$('start').onclick = async () => {
+  const st = $('status'); $('start').disabled = true;
+  try {
+    st.textContent = 'Asking for camera…';
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 }, audio: false });
+    video.srcObject = stream; await video.play();
+    st.textContent = 'Teaching the AI to be dramatic (loading models)…';
+    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+    $('intro').classList.add('hidden');
+    ['play', 'free', 'snap'].forEach(id => $(id).disabled = false);
+    running = true; detectLoop(); drawLoop();
+  } catch (e) {
+    console.error(e);
+    st.textContent = 'Could not start: ' + (e.message || e) + '. Camera needs permission and https/localhost.';
+    $('start').disabled = false;
+  }
+};
+
+const opts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
+async function detectLoop() {
+  while (running) {
+    const t0 = performance.now();
+    try {
+      const r = await faceapi.detectSingleFace(video, opts()).withFaceExpressions();
+      onDetect(r);
+    } catch (e) { console.error(e); }
+    await new Promise(res => setTimeout(res, Math.max(0, 100 - (performance.now() - t0))));
+  }
+}
+
+function onDetect(r) {
+  if (!r) { face = null; dominant = null; renderEmpty(); return; }
+  const b = r.detection.box;
+  face = face ? { x: lerp(face.x, b.x, .5), y: lerp(face.y, b.y, .5), w: lerp(face.w, b.width, .5), h: lerp(face.h, b.height, .5) }
+              : { x: b.x, y: b.y, w: b.width, h: b.height };
+  for (const k of KEYS) probs[k] = probs[k] * 0.55 + (r.expressions[k] || 0) * 0.45;
+  const top = KEYS.reduce((a, k) => probs[k] > probs[a] ? k : a, KEYS[0]);
+  // hysteresis so the verdict doesn't flicker
+  if (top !== dominant) {
+    if (top === candidate) candCount++; else { candidate = top; candCount = 1; }
+    if (candCount >= 4 || !dominant) { dominant = top; personaIdx = rand(EMO[top].personas.length); personaSince = performance.now(); }
+  } else candCount = 0;
+  if (performance.now() - personaSince > 6000) { personaIdx = (personaIdx + 1) % EMO[dominant].personas.length; personaSince = performance.now(); }
+  renderReading();
+  if (mode === 'game') gameTick();
+}
+
+function renderEmpty() {
+  $('emoji').textContent = '🔍'; $('persona').textContent = 'Where did you go?';
+  $('line').textContent = 'The AI squints at an empty chair. Come back into frame!';
+}
+function renderReading() {
+  const e = EMO[dominant], p = e.personas[personaIdx];
+  $('emoji').textContent = e.emoji; $('persona').textContent = p[0]; $('line').textContent = p[1];
+  const conf = probs[dominant];
+  for (let i = 0; i < 3; i++) {
+    // invented science: seeded by real confidence + a slow wobble per stat
+    const v = clamp(Math.round(30 + conf * 55 + Math.sin(performance.now() / 900 + i * 2) * 12), 3, 99);
+    $('sl' + i).textContent = p[2][i]; $('sv' + i).textContent = v + '%';
+    $('sb' + i).style.width = v + '%'; $('sb' + i).style.background = e.color;
+  }
+  for (const k of KEYS) $('m_' + k).style.height = Math.round(probs[k] * 100) + '%';
+}
+
+// ---------- drawing ----------
+function drawLoop() {
+  if (!running) return;
+  const W = cv.width, H = cv.height;
+  ctx.save(); ctx.scale(-1, 1); ctx.drawImage(video, -W, 0, W, H); ctx.restore();   // mirror like a selfie
+  if (face && dominant) {
+    const e = EMO[dominant], sx = W / video.videoWidth, sy = H / video.videoHeight;
+    const w = face.w * sx, h = face.h * sy, x = W - (face.x * sx + w), y = face.y * sy;
+    const cx = x + w / 2, bob = Math.sin(performance.now() / 250) * 5;
+    // aura ring
+    ctx.lineWidth = 5; ctx.strokeStyle = e.color; ctx.globalAlpha = .55 + probs[dominant] * .4;
+    ctx.beginPath(); ctx.ellipse(cx, y + h / 2, w * .62, h * .72, 0, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+    // floating emoji crown
+    ctx.font = Math.max(36, w * .5) + 'px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(e.emoji, cx, y - h * .22 + bob);
+    if (Math.random() < probs[dominant] * .35) particles.push({ x: cx + (Math.random() - .5) * w, y: y, vx: (Math.random() - .5) * 1.5, vy: -1 - Math.random() * 2, life: 1, e: e.emoji });
+  }
+  particles = particles.filter(p => (p.life -= .016) > 0);
+  for (const p of particles) { p.x += p.vx; p.y += p.vy; ctx.globalAlpha = p.life; ctx.font = '26px serif'; ctx.fillText(p.e, p.x, p.y); }
+  ctx.globalAlpha = 1;
+  // caption banner (baked into snapshots)
+  if (dominant) {
+    const p = EMO[dominant].personas[personaIdx];
+    ctx.fillStyle = 'rgba(15,8,30,.72)'; ctx.fillRect(0, H - 54, W, 54);
+    ctx.fillStyle = EMO[dominant].color; ctx.font = '800 24px ui-rounded, Trebuchet MS, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(EMO[dominant].emoji + ' ' + p[0], W / 2, H - 27);
+  }
+  requestAnimationFrame(drawLoop);
+}
+
+// ---------- snapshots ----------
+$('snap').onclick = () => {
+  const url = cv.toDataURL('image/jpeg', .9);
+  const a = document.createElement('a'); a.href = url; a.download = 'quirk-cam-' + Date.now() + '.jpg';
+  a.innerHTML = `<img src="${url}" alt="snapshot">`; a.title = 'Click to download';
+  $('snaps').prepend(a);
+};
+
+// ---------- mood missions ----------
+const MISSIONS = [
+  ['happy', 'Smile like you just remembered it is Friday'],
+  ['surprised', 'Be a cat who just spotted a cucumber'],
+  ['angry', 'Glare at someone chewing with their mouth open'],
+  ['sad', 'Your ice cream just hit the sidewalk'],
+  ['fearful', 'You heard a noise in the haunted pizzeria'],
+  ['disgusted', 'Sniff the milk. It is three days past the date'],
+  ['neutral', 'Poker face. You are a smug rock'],
+];
+const ROUNDS = 5, ROUND_SECS = 8, HOLD_NEED = 1.0;
+let g = null;
+$('play').onclick = () => {
+  mode = 'game'; $('missionCard').style.display = '';
+  const order = MISSIONS.slice().sort(() => Math.random() - .5).slice(0, ROUNDS);
+  g = { order, i: 0, score: 0, holdT: 0, start: performance.now(), last: performance.now(), done: false, ok: 0 };
+  showRound();
+};
+$('free').onclick = () => { mode = 'free'; g = null; $('missionCard').style.display = 'none'; };
+
+function showRound() {
+  const [k, text] = g.order[g.i];
+  $('rnd').textContent = g.i + 1; $('mission').textContent = EMO[k].emoji + ' ' + text;
+  $('sc').textContent = g.score; g.holdT = 0; g.start = performance.now(); g.last = g.start;
+}
+function gameTick() {
+  if (!g || g.done) return;
+  const now = performance.now(), dt = (now - g.last) / 1000; g.last = now;
+  const [k] = g.order[g.i];
+  const left = Math.max(0, ROUND_SECS - (now - g.start) / 1000);
+  $('tm').textContent = Math.ceil(left);
+  const need = k === 'neutral' ? .7 : .5;
+  g.holdT = probs[k] >= need ? g.holdT + dt : Math.max(0, g.holdT - dt * .5);
+  $('hold').style.width = Math.min(100, g.holdT / HOLD_NEED * 100) + '%';
+  if (g.holdT >= HOLD_NEED) { g.score += 100 + Math.round(left * 20); g.ok++; burst(EMO[k].emoji); nextRound(); }
+  else if (left <= 0) nextRound();
+}
+function nextRound() {
+  g.i++;
+  if (g.i >= ROUNDS) return finish();
+  showRound();
+}
+function burst(emoji) { for (let i = 0; i < 30; i++) particles.push({ x: cv.width / 2, y: cv.height / 2, vx: (Math.random() - .5) * 8, vy: (Math.random() - .5) * 8, life: 1, e: emoji }); }
+function finish() {
+  g.done = true; $('sc').textContent = g.score;
+  const titles = ['Emotionally Unavailable Houseplant', 'Rookie Face Goblin', 'Competent Mood Ninja', 'Certified Drama Llama', 'Oscar-Winning Face Wizard'];
+  const t = titles[Math.min(g.ok, 4)];
+  $('mission').textContent = `🏆 ${t} · ${g.ok}/${ROUNDS} nailed · ${g.score} pts`;
+  $('hold').style.width = '0%'; $('tm').textContent = '–';
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function rand(n) { return Math.floor(Math.random() * n); }
+</script>
+</body>
+</html>
