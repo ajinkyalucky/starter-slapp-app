@@ -2,8 +2,10 @@ import os
 import sys
 import time
 import wave
-from google import genai
-from google.genai import types
+import base64
+import json
+import urllib.request
+import urllib.error
 
 API_KEY = os.environ.get("GEMINI_API_KEY")
 VOICE_NAME = "Sulafat"  # Options: Sulafat, Despina, Aoede, Gacrux
@@ -48,12 +50,42 @@ SEGMENTS = {
     "fill-10": "Upstairs, a stylist is reading someone's colours right now. [beat] Deep Autumn… if I had to guess.",
 }
 
-def save_wav(filename: str, pcm_bytes: bytes, rate: int = 24000):
-    with wave.open(filename, "wb") as wf:
+def synth(text: str) -> bytes:
+    """Call the Gemini REST API directly; returns a complete WAV file as bytes."""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_ID}:generateContent"
+    body = {
+        "contents": [{"parts": [{"text": STYLE_DIRECTION + text}]}],
+        "generationConfig": {
+            "responseModalities": ["AUDIO"],
+            "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": VOICE_NAME}}},
+        },
+    }
+    req = urllib.request.Request(
+        url, data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json", "x-goog-api-key": API_KEY},
+    )
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(req, timeout=180) as r:
+                data = json.load(r)
+            break
+        except urllib.error.HTTPError as e:
+            if e.code in (429, 500, 503) and attempt < 3:
+                time.sleep(5 * (attempt + 1))
+                continue
+            raise SystemExit(f"API error {e.code}: {e.read().decode()[:500]}")
+    part = data["candidates"][0]["content"]["parts"][0]["inlineData"]
+    audio = base64.b64decode(part["data"])
+    if audio[:4] == b"RIFF":  # already a WAV file
+        return audio
+    import io
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
         wf.setnchannels(1)
         wf.setsampwidth(2)
-        wf.setframerate(rate)
-        wf.writeframes(pcm_bytes)
+        wf.setframerate(24000)
+        wf.writeframes(audio)
+    return buf.getvalue()
 
 def main():
     if not API_KEY:
@@ -61,31 +93,17 @@ def main():
 
     only = sys.argv[1:]  # optional: segment ids to run, e.g. 01-arrival
     os.makedirs(OUT_DIR, exist_ok=True)
-    client = genai.Client(api_key=API_KEY)
 
     for seg_id, text in SEGMENTS.items():
         if only and seg_id not in only:
             continue
         out_path = os.path.join(OUT_DIR, f"{seg_id}.wav")
-        print(f"Generating {seg_id}.wav ...")
-
-        response = client.models.generate_content(
-            model=MODEL_ID,
-            contents=STYLE_DIRECTION + text,
-            config=types.GenerateContentConfig(
-                response_modalities=["AUDIO"],
-                speech_config=types.SpeechConfig(
-                    voice_config=types.VoiceConfig(
-                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                            voice_name=VOICE_NAME
-                        )
-                    )
-                ),
-            ),
-        )
-
-        pcm_data = response.candidates[0].content.parts[0].inline_data.data
-        save_wav(out_path, pcm_data)
+        if os.path.exists(out_path) and not only:
+            print(f"Skipping {seg_id}.wav (already exists)")
+            continue
+        print(f"Generating {seg_id}.wav ...", flush=True)
+        with open(out_path, "wb") as f:
+            f.write(synth(text))
         time.sleep(2)
 
     print(f"\nDone! Files saved in {OUT_DIR}/")
