@@ -82,6 +82,17 @@ c = canvas.Canvas('wallet-deboss-artwork.pdf', pagesize=(W*mm, H*mm))
 c.setTitle('Wallet deboss artwork 65 x 95 mm'); c.setAuthor(''); 
 art(c, 0, H*mm, 1); c.showPage(); c.save()
 
+# ---------- 1b. Illustrator working file: artwork + guides in spot colours ----------
+c = canvas.Canvas('wallet-deboss.ai', pagesize=(W*mm, H*mm))
+c.setTitle('Wallet deboss 65 x 95 mm')
+art(c, 0, H*mm, 1)
+lw = 0.25; h = lw/2
+c.setLineWidth(lw); c.setStrokeColor(GUIDE)
+c.roundRect(h, h, W*mm - lw, H*mm - lw, R*mm - h)
+c.setStrokeColor(SAFEC); c.setDash(3, 2)
+c.roundRect(SAFE*mm, SAFE*mm, (W-2*SAFE)*mm, (H-2*SAFE)*mm, (R-SAFE/2)*mm)
+c.showPage(); c.save()
+
 # ---------- 2. handover sheet, A4 landscape, drawing at 150% ----------
 PW, PH = 297*mm, 210*mm
 S = 1.5
@@ -113,8 +124,8 @@ def block(head, rows):
 block('Size', [('Wallet face', '65 x 95 mm')])
 block('Placement', [('Heart', 'Top left'), ('Crown mark', 'Bottom right'),
                     ('Position', 'Indicative, keep inside the safe area')])
-block('Finish', [('Process', 'Blind deboss, no foil, no ink'), ('Artwork colour', '100 % K, vector'),
-                 ('Black area', 'Pressed into the leather'), ('Leather', 'Green, brown')])
+block('Finish', [('Process', 'Deboss, black ink'), ('Artwork colour', '100 % K, vector'),
+                 ('Black area', 'Debossed and inked black'), ('Leather', 'Green, brown')])
 line('KEY', 6.5, GREY, gap=13)
 for col, dash, lab in ((GUIDE, None, 'Cut edge, not printed'), (SAFEC, (3, 2), 'Safe area, not printed')):
     c.setStrokeColor(col); c.setLineWidth(0.8)
