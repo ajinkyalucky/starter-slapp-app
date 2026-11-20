@@ -92,39 +92,6 @@ X, Y = art(c, ox, oy, S)
 
 c.setLineWidth(0.5); c.setStrokeColor(GUIDE)
 c.roundRect(X(0), Y(H), W*mm*S, H*mm*S, R*mm*S)
-c.setStrokeColor(SAFEC); c.setDash(3, 2)
-c.roundRect(X(SAFE), Y(H-SAFE), (W-2*SAFE)*mm*S, (H-2*SAFE)*mm*S, (R-SAFE/2)*mm*S)
-c.setDash()
-
-def dim(x1, y1, x2, y2, label, off=0, side=1, lx=None, ly=None):
-    """dimension line between two points in wallet mm; horizontal or vertical"""
-    c.setStrokeColor(GREY); c.setFillColor(GREY); c.setLineWidth(0.35); c.setFont('Helvetica', 6.5)
-    t = 2.2
-    if y1 == y2:
-        c.line(X(x1), Y(y1), X(x2), Y(y1))
-        c.line(X(x1), Y(y1)-t, X(x1), Y(y1)+t); c.line(X(x2), Y(y1)-t, X(x2), Y(y1)+t)
-        c.drawCentredString(X(lx) if lx is not None else (X(x1)+X(x2))/2, Y(y1) + (3 if side > 0 else -8.5), label)
-    else:
-        c.line(X(x1), Y(y1), X(x1), Y(y2))
-        c.line(X(x1)-t, Y(y1), X(x1)+t, Y(y1)); c.line(X(x1)-t, Y(y2), X(x1)+t, Y(y2))
-        if side > 0: c.drawString(X(x1) + 4, (Y(ly) if ly is not None else (Y(y1)+Y(y2))/2) - 2.2, label)
-        else: c.drawRightString(X(x1) - 4, (Y(y1)+Y(y2))/2 - 2.2, label)
-
-f = lambda v: ('%.1f' % v).rstrip('0').rstrip('.')
-dim(0, -5, W, -5, '65 mm')
-dim(-5, 0, -5, H, '95 mm', side=-1)
-# heart
-dim(0, HY + heart_h/2, HX, HY + heart_h/2, f(HX), lx=(SAFE+HX)/2)
-dim(HX + HEART_W/2, 0, HX + HEART_W/2, HY, f(HY))
-dim(HX, HY + heart_h + 3, HX + HEART_W, HY + heart_h + 3, f(HEART_W), side=-1)
-# king
-dim(KX + KING_W, KY + king_h/2, W, KY + king_h/2, f(M), lx=W-(SAFE+M)/2)
-dim(KX + KING_W/2, KY + king_h, KX + KING_W/2, H, f(M), ly=H-(SAFE+M)/2)
-dim(KX, KY - 3, KX + KING_W, KY - 3, f(KING_W))
-dim(KX - 3, KY, KX - 3, KY + king_h, f(king_h), side=-1)
-# safe
-dim(0, 52, SAFE, 52, f(SAFE), lx=SAFE/2-0.4)
-
 # text column
 tx = 168*mm; ty = PH - 36*mm
 def line(txt, size=8.5, col=K, gap=13, font='Helvetica'):
@@ -139,19 +106,10 @@ def block(head, rows):
         c.setFillColor(GREY); c.setFont('Helvetica', 8.5); c.drawString(tx, ty, a)
         c.setFillColor(K); c.drawString(tx + 38*mm, ty, b); ty -= 13
     ty -= 12
-block('Size', [('Wallet face', '65 x 95 mm'), ('Corner radius', '%s mm, match to die' % f(R)),
-               ('Safe area', '%s mm inset from edge' % f(SAFE)), ('Drawing scale', '150 %')])
-block('Heart', [('Size', '%s x %s mm' % (f(HEART_W), f(heart_h))), ('From left edge', '%s mm' % f(HX)),
-                ('From top edge', '%s mm' % f(HY))])
-block('Crown mark', [('Size', '%s x %s mm' % (f(KING_W), f(king_h))), ('From right edge', '%s mm' % f(M)),
-                     ('From bottom edge', '%s mm' % f(M)), ('Smallest pixel', '%.2f mm' % (9.8281 * KING_W / 334.154))])
+block('Size', [('Wallet face', '65 x 95 mm')])
+block('Placement', [('Heart', 'Top left'), ('Crown mark', 'Bottom right'),
+                    ('Position', 'Indicative, adjust to fit the wallet')])
 block('Finish', [('Process', 'Blind deboss, no foil, no ink'), ('Artwork colour', '100 % K, vector'),
                  ('Black area', 'Pressed into the leather'), ('Leather', 'Green, brown')])
-line('KEY', 6.5, GREY, gap=13)
-for col, dash, lab in ((GUIDE, None, 'Cut edge, not printed'), (SAFEC, (3, 2), 'Safe area, not printed')):
-    c.setStrokeColor(col); c.setLineWidth(0.8)
-    if dash: c.setDash(*dash)
-    c.line(tx, ty + 3, tx + 12*mm, ty + 3); c.setDash()
-    c.setFillColor(K); c.setFont('Helvetica', 8.5); c.drawString(tx + 16*mm, ty, lab); ty -= 13
 c.showPage(); c.save()
 print(KX, KY, king_h, heart_h)
