@@ -7,7 +7,7 @@ W, H = 65.0, 95.0            # wallet face, mm
 R = 8.0                      # corner radius (assumed from photo)
 SAFE = 6.0                   # safe inset
 M = 9.5                      # artwork margin
-HEART_W, HEART_TOP = 5.0, 20.5
+HEART_W, HEART_TOP = 5.0, 10.0
 KING_W = 17.5
 
 K = CMYKColor(0, 0, 0, 1)
