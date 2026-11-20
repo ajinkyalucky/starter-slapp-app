@@ -6,7 +6,7 @@ from reportlab.lib.colors import CMYKColor, CMYKColorSep
 W, H = 65.0, 95.0            # wallet face, mm
 R = 8.0                      # corner radius (assumed from photo)
 SAFE = 6.0                   # safe inset
-M = 9.5                      # artwork margin
+M = 10.0                     # artwork margin
 HEART_W, HEART_TOP = 5.0, 10.0
 KING_W = 17.5
 
@@ -92,6 +92,10 @@ X, Y = art(c, ox, oy, S)
 
 c.setLineWidth(0.5); c.setStrokeColor(GUIDE)
 c.roundRect(X(0), Y(H), W*mm*S, H*mm*S, R*mm*S)
+c.setStrokeColor(SAFEC); c.setLineWidth(0.5); c.setDash(3, 2)
+c.roundRect(X(SAFE), Y(H-SAFE), (W-2*SAFE)*mm*S, (H-2*SAFE)*mm*S, (R-SAFE/2)*mm*S)
+c.setDash()
+
 # text column
 tx = 168*mm; ty = PH - 36*mm
 def line(txt, size=8.5, col=K, gap=13, font='Helvetica'):
@@ -108,8 +112,14 @@ def block(head, rows):
     ty -= 12
 block('Size', [('Wallet face', '65 x 95 mm')])
 block('Placement', [('Heart', 'Top left'), ('Crown mark', 'Bottom right'),
-                    ('Position', 'Indicative, adjust to fit the wallet')])
+                    ('Position', 'Indicative, keep inside the safe area')])
 block('Finish', [('Process', 'Blind deboss, no foil, no ink'), ('Artwork colour', '100 % K, vector'),
                  ('Black area', 'Pressed into the leather'), ('Leather', 'Green, brown')])
+line('KEY', 6.5, GREY, gap=13)
+for col, dash, lab in ((GUIDE, None, 'Cut edge, not printed'), (SAFEC, (3, 2), 'Safe area, not printed')):
+    c.setStrokeColor(col); c.setLineWidth(0.8)
+    if dash: c.setDash(*dash)
+    c.line(tx, ty + 3, tx + 12*mm, ty + 3); c.setDash()
+    c.setFillColor(K); c.setFont('Helvetica', 8.5); c.drawString(tx + 16*mm, ty, lab); ty -= 13
 c.showPage(); c.save()
 print(KX, KY, king_h, heart_h)
