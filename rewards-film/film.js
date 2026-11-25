@@ -132,7 +132,7 @@ async function loadRewards() {
   }
 }
 // A framed reward: image keeps its aspect inside a w×h mat (cover-fit via UV crop).
-function rewardCard(i, w, h, parent, x, y, z, ry = 0) {
+function rewardCard(i, w, h, parent, x, y, z, ry = 0, glow = 0.42) {
   const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; parent.add(g);
   box(w + 0.03, h + 0.03, 0.02, metal, 0, 0, 0, g);
   const t = rewardTex[i % rewardTex.length].clone(); t.needsUpdate = true;
@@ -140,13 +140,13 @@ function rewardCard(i, w, h, parent, x, y, z, ry = 0) {
   if (ia > ca) { t.repeat.set(ca / ia, 1); t.offset.set((1 - ca / ia) / 2, 0); }
   else { t.repeat.set(1, ia / ca); t.offset.set(0, (1 - ia / ca) / 2); }
   const face = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
-    new THREE.MeshStandardMaterial({ map: t, roughness: 0.6, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.42 }));
+    new THREE.MeshStandardMaterial({ map: t, roughness: 0.6, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: glow }));
   face.position.z = 0.0105; face.receiveShadow = true; g.add(face);
   return g;
 }
 
 // ---------- furnishings (built after textures load) ----------
-const lights = {};
+const lights = {}; const globes = [];
 function build() {
   // Back wall: wood panelling in bays with LED lines and hung rewards
   const back = new THREE.Group(); back.position.set(0, 0, -5.98); room.add(back);
@@ -187,7 +187,7 @@ function build() {
   // hero card on a small stand, leaning back
   const stand = new THREE.Group(); stand.position.set(0, 0.762, -0.02); vit.add(stand);
   box(0.36, 0.02, 0.16, metal, 0, 0.01, 0, stand);
-  const hero = rewardCard(7, 0.28, 0.42, stand, 0, 0.235, -0.01); hero.rotation.x = -0.12;
+  const hero = rewardCard(7, 0.28, 0.42, stand, 0, 0.235, -0.01, 0, 0.22); hero.rotation.x = -0.12;
 
   // Rug, bench, lounge chair, pendant globes
   const rug = box(3.4, 0.015, 2.2, std(0x7d766c, 1), 0.6, 0.008, -4.3, room); rug.castShadow = false;
@@ -200,7 +200,7 @@ function build() {
   box(0.64, 0.14, 0.6, std(0x3a3835, 0.8), 0, 0.08, 0, chair);
   const globe = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 0.8, 0.55).multiplyScalar(1.35) });
   [[0.55, 2.2, -4.3, 0.2], [0.95, 2.05, -4.5, 0.24], [1.3, 2.28, -4.25, 0.17]].forEach(([x, y, z, r]) => {
-    const s = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 32), globe); s.position.set(x, y, z); s.scale.y = 0.78; room.add(s);
+    const s = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 32), globe); s.position.set(x, y, z); s.scale.y = 0.78; room.add(s); globes.push(s);
     box(0.006, 3 - y - r * 0.7, 0.006, metal, x, (3 + y + r * 0.7) / 2, z, room).castShadow = false;
   });
 
@@ -213,7 +213,7 @@ function build() {
   };
   lights.wallA = spot(-1.6, 2.9, -3.6, -1.6, 1.3, -6, 12, 0.8);
   lights.wallB = spot(1.6, 2.9, -3.6, 1.6, 1.3, -6, 12, 0.8);
-  lights.vit = spot(0, 2.95, -2.1, 0, 0.8, -2.6, 5, 0.42);
+  lights.vit = spot(0, 2.95, -2.1, 0, 0.8, -2.6, 2.6, 0.42);
   lights.left = spot(-2.2, 2.9, -3, -4, 1.3, -3, 8, 0.85, false);
   const p1 = new THREE.PointLight(0xffc890, 5, 5, 1.8); p1.position.set(0.95, 1.95, -4.4); room.add(p1); lights.globe = p1;
   const p2 = new THREE.PointLight(0xffb070, 0.5, 2.5, 2); p2.position.set(0, 0.95, -2.3); room.add(p2); lights.case = p2;
@@ -270,10 +270,10 @@ function cam(p0, p1, l0, l1, k, fov, roll = 0) {
 export const CUTS = [0, 3.5, 5.7, 7.9, 10.3, 13];
 function frame(t) {
   let fade = 1;
-  ceiling.visible = true; entry.visible = true;
+  ceiling.visible = true; entry.visible = true; globes.forEach(g => (g.visible = true));
   bloom.strength = 0.4;
   const lightsUp = k => {
-    lights.wallA.intensity = lights.wallB.intensity = 12 * k; lights.vit.intensity = 5 * k;
+    lights.wallA.intensity = lights.wallB.intensity = 12 * k; lights.vit.intensity = 2.6 * k;
     lights.left.intensity = 8 * k; lights.globe.intensity = 4 * k; lights.case.intensity = 0.5 * k;
   };
   lightsUp(1);
@@ -295,6 +295,7 @@ function frame(t) {
   } else if (t < CUTS[4]) {                // 4 — the wall
     const k = seg(t, CUTS[3], CUTS[4]);
     entry.visible = false;
+    globes.forEach(g => (g.visible = false));
     cam(v(0.5, 1.36, -3.35), v(1.3, 1.36, -3.35), v(0.7, 1.36, -6), v(1.5, 1.36, -6), k, 50);
   } else {                                 // 5 — the room, lights settle up
     const k = seg(t, CUTS[4], CUTS[5]);
