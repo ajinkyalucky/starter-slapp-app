@@ -1,0 +1,5 @@
+node_modules/
+stills/
+check/
+rewards/manifest.json
+*.mp4
